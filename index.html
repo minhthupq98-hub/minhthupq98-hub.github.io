@@ -3,11 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#56633f" />
+    <meta name="theme-color" content="#123d28" />
     <meta name="description" content="Phần mềm order và tính lợi nhuận cho The Khe" />
-    <title>The Khe · Order & Profit</title>
-    <script type="module" crossorigin src="/assets/index-BpABOaN7.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-aPHuWTPt.css">
+    <title>THE KHE · Quản lý cửa hàng</title>
+    <script>
+      (function () {
+        var destination = "https://the-khe-order.minhthupq98.chatgpt.site/";
+        function routeCustomer() {
+          var hash = window.location.hash;
+          var staffRoute = /^#\/(?:staff|admin)(?:\/|$)/.test(hash);
+          var authCallback = /(?:^#|&)access_token=|^#error=/.test(hash) ||
+            new URLSearchParams(window.location.search).has("code");
+          if (staffRoute || authCallback) return false;
+          window.location.replace(destination);
+          return true;
+        }
+        window.addEventListener("hashchange", routeCustomer);
+        if (routeCustomer()) return;
+        function bootStaff() {
+          var stylesheet = document.createElement("link");
+          stylesheet.rel = "stylesheet";
+          stylesheet.crossOrigin = "anonymous";
+          stylesheet.href = "/assets/index-aPHuWTPt.css";
+          document.head.appendChild(stylesheet);
+          var staffApp = document.createElement("script");
+          staffApp.type = "module";
+          staffApp.crossOrigin = "anonymous";
+          staffApp.src = "/assets/index-BpABOaN7.js";
+          document.head.appendChild(staffApp);
+        }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", bootStaff, { once: true });
+        } else {
+          bootStaff();
+        }
+      })();
+    </script>
+    
   </head>
   <body>
     <div id="root"></div>
