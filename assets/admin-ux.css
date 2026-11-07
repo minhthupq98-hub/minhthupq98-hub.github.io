@@ -1,0 +1,70 @@
+/* THE KHE staff UI layer. Screen only; no bill, body, root or print rules. */
+@media screen {
+  .workspace .catalog-panel { padding: 26px 28px 48px; }
+  .workspace .catalog-head { gap: 16px; }
+  .workspace .category-tabs { gap: 8px; }
+  .workspace .product-grid { gap: 12px; }
+  .workspace .product-card { text-align: left; }
+  .workspace .order-head { gap: 12px; }
+  .workspace .cart-line { column-gap: 10px; }
+  .workspace .order-submit-dock { padding: 12px 20px 16px; }
+  .workspace .checkout-button { font-size: 14px; font-weight: 800; }
+  .orders-page .queue-order { gap: 12px; }
+  .products-page .product-hidden { opacity: 1; }
+  .topbar .main-nav button,
+  .topbar .header-actions button,
+  .topbar .header-actions a { min-height: 44px; }
+
+  .workspace .category-tabs button,
+  .workspace .channel-switch button,
+  .workspace .mini-switch button,
+  .workspace .discount-type button,
+  .workspace .order-head button,
+  .workspace .checkout-button,
+  .workspace .mobile-cart-toggle { min-height: 44px; }
+  .workspace .qty button { width: 44px; height: 44px; flex: 0 0 44px; font-size: 19px; }
+  .workspace .qty { gap: 7px; }
+  .workspace .channel-switch { gap: 5px; }
+  .workspace .mini-switch { gap: 4px; }
+  .workspace .mini-switch button { font-size: 12px; }
+  .workspace .discount-type button { font-size: 11px; }
+  .workspace .order-head button { padding-inline: 12px; }
+
+  .orders-page .queue-actions button,
+  .members-page button,
+  .report-page button,
+  .products-page button { min-height: 44px; }
+  .orders-page .queue-actions { gap: 8px; }
+  .orders-page .queue-actions button { font-size: 12px; }
+  .products-page .product-visibility { min-width: 90px; }
+
+  .topbar button:focus-visible,
+  .topbar a:focus-visible,
+  .workspace button:focus-visible,
+  .workspace input:focus-visible,
+  .orders-page button:focus-visible,
+  .orders-page input:focus-visible,
+  .members-page button:focus-visible,
+  .members-page input:focus-visible,
+  .report-page button:focus-visible,
+  .report-page input:focus-visible,
+  .products-page button:focus-visible,
+  .products-page input:focus-visible,
+  .products-page textarea:focus-visible,
+  .products-page select:focus-visible { outline: 3px solid #375f39; outline-offset: 2px; }
+
+  @media (max-width: 820px) {
+    .topbar { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .topbar .main-nav { min-width: 0; max-width: 100%; justify-self: stretch; overflow-x: auto; }
+    .topbar .main-nav button { flex: 0 0 auto; white-space: nowrap; font-size: 11px; padding-inline: 9px; }
+    .topbar .main-nav button:first-letter { font-size: inherit; }
+    .workspace .catalog-panel { padding: 16px 12px calc(94px + env(safe-area-inset-bottom)); }
+    .workspace .category-tabs { overflow-x: auto; }
+    .workspace .category-tabs button { flex: 0 0 auto; }
+    .workspace .order-submit-dock { padding: 10px 15px calc(12px + env(safe-area-inset-bottom)); }
+    .workspace .mini-switch button { font-size: 11px; }
+    .workspace .qty button { width: 44px; height: 44px; }
+    .orders-page .queue-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .products-page .products-table-card { max-width: 100%; overflow-x: auto; }
+  }
+}
