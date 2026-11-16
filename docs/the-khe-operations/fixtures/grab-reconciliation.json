@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "currency": "VND",
+  "timeZone": "Asia/Ho_Chi_Minh",
+  "orders": [
+    {
+      "source": "order_fixture",
+      "orderId": "Q-001",
+      "channel": "counter",
+      "businessDate": "2026-10-30",
+      "grossAmount": 40000,
+      "merchantDiscount": 0,
+      "refundAmount": 0,
+      "costOfGoods": 15000,
+      "receivedAmount": 40000,
+      "receivedDate": "2026-10-30",
+      "paymentMethod": "cash"
+    },
+    {
+      "source": "order_fixture",
+      "orderId": "G-001",
+      "channel": "grab",
+      "businessDate": "2026-10-31",
+      "grossAmount": 60000,
+      "merchantDiscount": 5000,
+      "refundAmount": 0,
+      "costOfGoods": 18000,
+      "receivedAmount": 0,
+      "paymentMethod": "platform"
+    }
+  ],
+  "grabSettlement": {
+    "source": "grab_fixture",
+    "period": "2026-10",
+    "payoutId": "P-001",
+    "receivedDate": "2026-11-02",
+    "lines": [
+      {
+        "sourceLineId": "S-001",
+        "orderId": "G-001",
+        "platformFee": 10000,
+        "platformFundedSupport": 0,
+        "taxWithheld": 0,
+        "amountPaid": 45000
+      }
+    ]
+  },
+  "expected": {
+    "revenueOctober": 95000,
+    "cashReceivedOctober": 40000,
+    "platformReceivableOctober": 45000,
+    "contributionOctober": 52000,
+    "revenueFromPayoutNovember": 0,
+    "payoutReceivedNovember": 45000,
+    "platformReceivableAfterPayout": 0,
+    "distinctSettlementLinesAfterDuplicateImport": 1
+  },
+  "taxWithholdingVariant": {
+    "replacesSettlementLine": "S-001",
+    "taxWithheld": 2000,
+    "amountPaid": 43000,
+    "revenueOctober": 95000
+  },
+  "aggregateOnlyVariant": {
+    "replaces": true,
+    "period": "2026-10",
+    "amountPaid": 45000,
+    "itemAllocation": "unavailable"
+  }
+}
