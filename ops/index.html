@@ -51,6 +51,21 @@
       <section class="card"><h2>Món lãi thấp nhất</h2><p class="muted small">Xem lại giá, định lượng hoặc vai trò kéo khách trước khi ẩn.</p><div id="lowItems"></div></section>
     </div>
     <section class="card"><h2>Chi phí trong kỳ</h2><div id="expenses"></div></section>
+    <section class="card" id="ledger">
+      <h2>Đối soát Grab và chốt kỳ <span id="ledgerPeriod" class="pill"></span></h2>
+      <p class="muted small">Theo tháng đang chọn. Nhập file CSV đối soát Grab, xem trước rồi mới ghi vào sổ. Nhập lại cùng file hoặc cùng mã dòng không tạo dòng mới.</p>
+      <div id="ledgerStatus"></div>
+      <div id="ledgerKpis" class="kpis"></div>
+      <div class="row">
+        <label class="file">Chọn file CSV Grab <input id="grabFile" type="file" accept=".csv,text/csv"></label>
+        <button id="lockBtn">Chốt kỳ</button>
+        <button id="reopenBtn" class="ghost" hidden>Mở lại kỳ</button>
+      </div>
+      <div id="grabPreview"></div>
+      <div id="revisions"></div>
+      <h3>Cần giải quyết trước khi chốt</h3><div id="resolution"></div>
+      <details><summary>Lần nhập và nhật ký</summary><div id="batches"></div><div id="audit"></div></details>
+    </section>
   </section>
   <p id="status" class="muted center" role="status"></p>
 </main>

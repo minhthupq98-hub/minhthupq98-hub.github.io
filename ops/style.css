@@ -30,3 +30,11 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .bars div{flex:1;background:#c9a88a;border-radius:3px 3px 0 0;min-height:1px}.bars div:hover{background:var(--brand)}
 .pill{font-size:12px;background:var(--line);border-radius:99px;padding:1px 8px;vertical-align:middle}
 details summary{cursor:pointer;color:var(--brand);margin-top:6px}
+
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.file{display:inline-flex;gap:6px;align-items:center;border:1px dashed #b9a98f;border-radius:10px;padding:8px 10px;cursor:pointer}
+.file input{max-width:190px}
+h3{font-size:14px;margin:14px 0 6px}
+details{margin-top:12px}
+.ok{background:#e8f5ec;border-left:4px solid #2f8f4e;padding:8px 10px;border-radius:8px;margin:6px 0}
+button:disabled{opacity:.5;cursor:not-allowed}

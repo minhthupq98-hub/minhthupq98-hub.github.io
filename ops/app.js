@@ -1,6 +1,8 @@
 import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js';
 import { SupabaseClient, SupabaseOrderReader, readSupabaseOrders, readExpenses, readSettings } from './lib/supabase-order-source.js';
 import { buildOwnerDashboard, monthRange, rangeToIso } from './lib/owner-dashboard.js';
+import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js';
+import { buildReconcileReport } from './lib/reconcile-report.js';
 
 const OWN_KEY = 'the-khe-ops-session';
 const $ = (id) => document.getElementById(id);
@@ -11,6 +13,7 @@ const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400e3).t
 const fmtTime = (iso) => (iso ? new Date(iso).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'chưa có');
 
 const client = new SupabaseClient({ url: SUPABASE_URL, key: SUPABASE_KEY });
+const store = new SupabaseSettlementStore(client);
 let quick = 'month';
 
 // Phiên: ưu tiên phiên riêng của màn này; nếu chưa có thì mượn access token còn hạn của
@@ -80,6 +83,7 @@ async function load() {
     });
     render(d, settings);
     $('status').textContent = '';
+    loadLedger();
   } catch (err) {
     if (/đăng nhập/i.test(err.message)) return showLogin(err.message);
     $('status').textContent = `Không đọc được số: ${err.message}. Bấm Tải lại để thử lại.`;
@@ -140,6 +144,157 @@ function render(d, settings) {
     ? table([['Nhóm'], ['Số khoản', 1], ['Tổng', 1]], d.expenseByCategory.map((e) => [esc(e.category), e.count, vnd(e.amount)]))
     : '<p class="muted">Chưa có khoản chi nào trong kỳ. Nhập chi phí ở app tài chính để lãi ròng đầy đủ.</p>';
 }
+
+// ===== Ticket 3: sổ đối soát Grab và chốt kỳ (ghi qua RPC ops_*) =====
+const FIELD = {
+  line_type: 'Loại dòng', order_ref: 'Mã đơn', period: 'Kỳ', payout_id: 'Đợt trả', received_date: 'Ngày tiền về',
+  platform_fee: 'Phí sàn', platform_funded_support: 'Trợ giá sàn chịu', tax_withheld: 'Thuế nộp thay', amount_paid: 'Tiền trả',
+};
+const ACTION = {
+  import: 'Nhập file', import_duplicate_file: 'Nhập trùng file (bỏ qua)', import_blocked_locked: 'Nhập vào kỳ đã khóa (bị chặn)',
+  apply_revisions: 'Áp dụng bản sửa', discard_revisions: 'Bỏ bản sửa', lock_period: 'Chốt kỳ', reopen_period: 'Mở lại kỳ',
+};
+const fmtVal = (f, v) => (v == null ? '-' : typeof v === 'number' && f !== 'period' ? vnd(v) : esc(v));
+let ledgerReport = null;
+let pendingFile = null;
+
+const period = () => $('month').value || today().slice(0, 7);
+
+async function loadLedger() {
+  const p = period();
+  $('ledgerPeriod').textContent = p;
+  $('ledgerStatus').innerHTML = '<p class="muted small">Đang đọc sổ đối soát...</p>';
+  try {
+    const end = monthRange(p).to;
+    const [ledger, src] = await Promise.all([
+      store.load(),
+      readSupabaseOrders(new SupabaseOrderReader(client, rangeToIso({ from: '2024-01-01', to: end }))),
+    ]);
+    const close = ledger.closes.find((c) => c.period === p);
+    const live = buildReconcileReport({
+      period: p,
+      orderSync: { ...src, orders: ordersForReconcile(src.orders), source: 'supabase:orders' },
+      lines: ledger.lines,
+      pendingRevisionCount: ledger.pending.length,
+      locked: close?.status === 'locked',
+    });
+    ledgerReport = live;
+    renderLedger(live, close, ledger);
+  } catch (err) {
+    if (/đăng nhập/i.test(err.message)) return showLogin(err.message);
+    $('ledgerStatus').innerHTML = `<div class="warn bad">Không đọc được sổ đối soát: ${esc(err.message)}. Bấm Tải lại để thử lại.</div>`;
+  }
+}
+
+function renderLedger(live, close, ledger) {
+  const locked = close?.status === 'locked';
+  // Kỳ đã khóa hiện đúng số lúc chốt, không đổi dù dữ liệu nguồn thay đổi sau đó.
+  const r = locked ? close.snapshot : live;
+  const notes = [];
+  if (locked) notes.push(`<div class="ok">Đã chốt lúc ${fmtTime(close.locked_at)}. Số bên dưới là số lúc chốt.</div>`);
+  else if (close?.status === 'reopened') notes.push(`<div class="warn">Kỳ đã mở lại lúc ${fmtTime(close.reopened_at)}. Lý do: ${esc(close.reopen_reason)}</div>`);
+  if (!locked) {
+    for (const b of live.blockers) notes.push(`<div class="warn bad">Chưa chốt được: ${esc(b)}</div>`);
+    for (const w of live.warnings) notes.push(`<div class="warn">${esc(w)}</div>`);
+    if (live.closeable) notes.push('<div class="ok">Đủ điều kiện chốt kỳ.</div>');
+  }
+  $('ledgerStatus').innerHTML = notes.join('');
+  const est = (on) => (on ? '<span class="tag">ước tính</span>' : '');
+  $('ledgerKpis').innerHTML = [
+    ['Doanh thu quản trị', vnd(r.revenue)],
+    [`Lãi đóng góp${est(r.contributionEstimated)}`, vnd(r.contribution)],
+    ['Tiền nhận trong kỳ', `${vnd(r.cashReceived.total)}<div class="muted small">quầy ${vnd(r.cashReceived.counter)} · Grab ${vnd(r.cashReceived.platformPayout)}</div>`],
+    [`Grab còn phải trả${est(r.receivableEstimated)}`, vnd(r.platformReceivable)],
+    ['Phí sàn (theo file)', vnd(r.platformFee)],
+    ['Thuế sàn nộp thay', `${vnd(r.taxWithheld)}<div class="muted small">hiện riêng, không trừ doanh thu</div>`],
+  ].map(([l, v]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
+  $('lockBtn').hidden = locked;
+  $('lockBtn').disabled = !live.closeable;
+  $('reopenBtn').hidden = !locked;
+
+  $('revisions').innerHTML = ledger.pending.length
+    ? `<h3>Bản sửa chờ xác nhận</h3>${[...new Set(ledger.pending.map((x) => x.batch_id))].map((bid) => {
+        const rows = ledger.pending.filter((x) => x.batch_id === bid).flatMap((x) => x.changes.map((c) => [esc(x.source_line_id), FIELD[c.field] ?? esc(c.field), fmtVal(c.field, c.before), fmtVal(c.field, c.after)]));
+        return `${table([['Mã dòng'], ['Trường'], ['Trước'], ['Sau']], rows)}<div class="row"><button data-apply="${esc(bid)}">Xác nhận áp dụng</button><button class="ghost" data-discard="${esc(bid)}">Bỏ bản sửa</button></div>`;
+      }).join('')}`
+    : '';
+
+  const res = locked ? [] : live.resolution;
+  $('resolution').innerHTML = res.length
+    ? table([['Loại'], ['Mã dòng/đơn'], ['Chi tiết']], res.map((x) => [esc(x.type), esc(x.sourceLineId ?? `#${x.orderId}`), esc(x.message)]))
+    : '<p class="muted">Không có mục nào.</p>';
+  $('batches').innerHTML = ledger.batches.length
+    ? table([['Lúc'], ['File'], ['Kỳ'], ['Thêm', 1], ['Trùng', 1], ['Sửa', 1], ['Loại', 1]], ledger.batches.map((b) => [fmtTime(b.created_at), esc(b.file_name), esc(b.periods.join(', ')), b.added, b.duplicates, b.revisions, b.rejected]))
+    : '<p class="muted">Chưa nhập file nào.</p>';
+  $('audit').innerHTML = ledger.audit.length
+    ? `<h3>Nhật ký</h3>${table([['Lúc'], ['Việc'], ['Chi tiết']], ledger.audit.map((a) => [fmtTime(a.created_at), ACTION[a.action] ?? esc(a.action), esc(a.detail.file_name ?? a.detail.period ?? '') + (a.detail.reason ? ` · ${esc(a.detail.reason)}` : '')]))}`
+    : '';
+}
+
+async function ledgerAction(fn, okMsg) {
+  try {
+    await fn();
+    $('grabPreview').innerHTML = okMsg ? `<div class="ok">${okMsg}</div>` : '';
+  } catch (err) {
+    $('grabPreview').innerHTML = `<div class="warn bad">${esc(err.message)}</div>`;
+  }
+  loadLedger();
+}
+
+$('grabFile').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  const text = await f.text();
+  const pv = previewGrabFile(text);
+  if (pv.fileError) { pendingFile = null; $('grabPreview').innerHTML = `<div class="warn bad">${esc(f.name)}: ${esc(pv.fileError)}</div>`; return; }
+  pendingFile = { fileName: f.name, text };
+  const rows = pv.lines.map((l) => [esc(l.sourceLineId), l.lineType === 'order' ? `#${esc(l.orderId)}` : 'Tổng kỳ', esc(l.period), esc(l.receivedDate ?? '-'), vnd(l.platformFee), vnd(l.taxWithheld), vnd(l.amountPaid)]);
+  $('grabPreview').innerHTML = `<h3>Xem trước: ${esc(f.name)}</h3>
+    <p class="small">${pv.lines.length} dòng hợp lệ, tổng tiền trả ${vnd(pv.total)}, kỳ ${esc(pv.periods.join(', ') || '-')}. ${pv.rejected.length} dòng bị loại.</p>
+    ${table([['Mã dòng'], ['Đơn'], ['Kỳ'], ['Tiền về'], ['Phí', 1], ['Thuế', 1], ['Tiền trả', 1]], rows)}
+    ${pv.rejected.length ? table([['Dòng'], ['Lý do bị loại']], pv.rejected.map((x) => [x.row, esc(x.errors.join('; '))])) : ''}
+    <div class="row"><button id="confirmImport" ${pv.lines.length ? '' : 'disabled'}>Ghi vào sổ</button><button id="cancelImport" class="ghost">Hủy</button></div>`;
+});
+
+const IMPORT_MSG = {
+  imported: (r) => `Đã ghi ${r.added} dòng mới, bỏ qua ${r.duplicates} dòng trùng.`,
+  needs_review: (r) => `Đã ghi ${r.added} dòng mới. ${r.revisions} dòng có số khác bản cũ đang chờ xác nhận${r.rejected.length ? `, ${r.rejected.length} dòng bị loại` : ''}.`,
+  duplicate_file: () => 'File này đã nhập trước đó, không ghi thêm gì.',
+  period_locked: (r) => `Kỳ ${r.locked_periods.join(', ')} đã khóa, không ghi gì. Mở lại kỳ nếu cần sửa.`,
+  file_error: (r) => `File lỗi: ${r.error}`,
+};
+
+$('grabPreview').addEventListener('click', (e) => {
+  if (e.target.id === 'cancelImport') { pendingFile = null; $('grabPreview').innerHTML = ''; }
+  if (e.target.id === 'confirmImport' && pendingFile) {
+    e.target.disabled = true;
+    const file = pendingFile;
+    pendingFile = null;
+    let msg = '';
+    ledgerAction(async () => { const r = await store.importFile(file); msg = IMPORT_MSG[r.status]?.(r) ?? r.status; }, '')
+      .then(() => { if (msg) $('grabPreview').innerHTML = `<div class="ok">${esc(msg)}</div>`; });
+  }
+});
+
+$('revisions').addEventListener('click', (e) => {
+  const apply = e.target.dataset.apply;
+  const discard = e.target.dataset.discard;
+  if (apply) ledgerAction(() => store.resolveRevisions(apply, true), 'Đã áp dụng bản sửa.');
+  if (discard && confirm('Bỏ bản sửa này, giữ số cũ?')) ledgerAction(() => store.resolveRevisions(discard, false), 'Đã bỏ bản sửa, giữ số cũ.');
+});
+
+$('lockBtn').addEventListener('click', () => {
+  if (!ledgerReport?.closeable) return;
+  if (!confirm(`Chốt kỳ ${ledgerReport.period}? Sau khi chốt, số kỳ này giữ nguyên và không nhập thêm file vào kỳ được nữa.`)) return;
+  ledgerAction(() => store.lockPeriod(ledgerReport.period, ledgerReport), `Đã chốt kỳ ${esc(ledgerReport.period)}.`);
+});
+
+$('reopenBtn').addEventListener('click', () => {
+  const reason = prompt(`Lý do mở lại kỳ ${period()} (bắt buộc):`);
+  if (reason == null) return;
+  ledgerAction(() => store.reopenPeriod(period(), reason), `Đã mở lại kỳ ${esc(period())}.`);
+});
 
 function start() {
   const token = findSession();
