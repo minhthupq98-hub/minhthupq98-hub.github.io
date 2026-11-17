@@ -8,15 +8,16 @@
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+<a href="#main" class="skip">Bỏ qua menu</a>
 <header class="top">
-  <div><b>THE KHE</b> <span class="muted">Màn chủ quán</span></div>
+  <div class="brand"><button id="navToggle" class="icon menu" aria-controls="sidenav" aria-expanded="false" aria-label="Mở danh mục" hidden><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><b>THE KHE</b> <span class="muted">Màn chủ quán</span></div>
   <div class="top-actions">
     <a href="../#/staff" class="link">Về admin</a>
     <button id="logout" class="ghost" hidden>Đăng xuất</button>
   </div>
 </header>
 
-<main>
+<main id="main">
   <section id="login" class="card narrow" hidden>
     <h1>Đăng nhập</h1>
     <p class="muted">Dùng đúng tài khoản admin. Màn này không sửa đơn hay món; chỉ ghi ca, tiền két, chi phí từ két, kho, công thức món và sổ đối soát.</p>
@@ -28,7 +29,22 @@
     </form>
   </section>
 
-  <section id="app" hidden>
+  <section id="app" class="shell" hidden>
+    <nav id="sidenav" class="sidenav" aria-label="Danh mục">
+      <ul>
+      <li><a href="#tong-quan" data-nav="tong-quan"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Tổng quan</span><span class="nb" id="nb-tong-quan"></span></a></li>
+      <li><a href="#ca" data-nav="ca"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2"/><path d="M3 6v12a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-3"/></svg><span>Ca & tiền mặt</span><span class="nb" id="nb-ca"></span></a></li>
+      <li><a href="#nhap-kho" data-nav="nhap-kho"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg><span>Nhập kho (AI)</span><span class="nb" id="nb-nhap-kho"></span></a></li>
+      <li><a href="#kho" data-nav="kho"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg><span>Kho & giá vốn</span><span class="nb" id="nb-kho"></span></a></li>
+      <li><a href="#nguyen-lieu" data-nav="nguyen-lieu"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.1-6"/></svg><span>Nguyên liệu</span><span class="nb" id="nb-nguyen-lieu"></span></a></li>
+      <li><a href="#cong-thuc" data-nav="cong-thuc"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg><span>Công thức món</span><span class="nb" id="nb-cong-thuc"></span></a></li>
+      <li><a href="#chi-phi" data-nav="chi-phi"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 2 2V2l-2 2-3-2-3 2-3-2-3 2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Chi phí</span><span class="nb" id="nb-chi-phi"></span></a></li>
+      <li><a href="#doi-soat" data-nav="doi-soat"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M5 7l-3 7a3.5 3.5 0 0 0 6 0zM19 7l-3 7a3.5 3.5 0 0 0 6 0zM8 21h8"/></svg><span>Đối soát Grab</span><span class="nb" id="nb-doi-soat"></span></a></li>
+      </ul>
+      <p class="muted small navhint">Phím tắt: 1 đến 8 để chuyển mục, R để tải lại.</p>
+    </nav>
+    <div id="scrim" class="scrim" hidden></div>
+    <div class="views">
     <div class="filters">
       <div class="seg" role="group" aria-label="Kỳ">
         <button data-q="today">Hôm nay</button>
@@ -39,8 +55,25 @@
       <button id="reload" class="ghost" title="Tải lại (R)">Tải lại</button>
     </div>
     <p id="meta" class="muted small"></p>
+    <div id="invMsg" class="flash" aria-live="polite"></div>
+
+    <section class="view" data-view="tong-quan" aria-labelledby="h-tong-quan">
+    <h1 id="h-tong-quan" class="vtitle" tabindex="-1">Tổng quan</h1>
     <div id="warnings"></div>
     <div id="kpis" class="kpis"></div>
+    <div class="grid2">
+      <section class="card"><h2>Doanh thu theo ngày</h2><div id="days" class="bars"></div></section>
+      <section class="card"><h2>Kênh và tiền về</h2><div id="channels"></div></section>
+    </div>
+    <section class="card"><h2>Việc cần xử lý <span id="issueCount" class="pill"></span></h2><div id="issues"></div></section>
+    <div class="grid2">
+      <section class="card"><h2>Món mang lãi nhiều nhất</h2><p class="muted small">Lãi gộp theo giá niêm yết trừ giá vốn, trước giảm giá cấp đơn.</p><div id="topItems"></div></section>
+      <section class="card"><h2>Món lãi thấp nhất</h2><p class="muted small">Xem lại giá, định lượng hoặc vai trò kéo khách trước khi ẩn.</p><div id="lowItems"></div></section>
+    </div>
+    </section>
+
+    <section class="view" data-view="ca" aria-labelledby="h-ca" hidden>
+    <h1 id="h-ca" class="vtitle" tabindex="-1">Ca &amp; tiền mặt</h1>
     <section class="card" id="shift">
       <h2>Ca và tiền mặt <span id="shiftState" class="pill"></span></h2>
       <div id="shiftStatus"></div>
@@ -69,6 +102,10 @@
       <p id="shiftMsg"></p>
       <details><summary>Các ca gần đây</summary><div id="shiftHistory"></div></details>
     </section>
+    </section>
+
+    <section class="view" data-view="nhap-kho" aria-labelledby="h-nhap-kho" hidden>
+    <h1 id="h-nhap-kho" class="vtitle" tabindex="-1">Nhập kho</h1>
     <section class="card" id="assistant">
       <h2>Trợ lý nhập kho <span class="pill">AI hỗ trợ</span></h2>
       <p class="muted small">Chụp hóa đơn để AI đọc ra từng dòng, hoặc nhập tay hàng mua không có hóa đơn. Tải sổ công thức Word để nhập công thức cho cả menu. Không có gì được ghi cho tới khi bạn soát và bấm Ghi.</p>
@@ -101,13 +138,19 @@
       </div>
       <div id="asRecent"></div>
     </section>
+    </section>
+
+    <section class="view" data-view="kho" aria-labelledby="h-kho" hidden>
+    <h1 id="h-kho" class="vtitle" tabindex="-1">Kho &amp; giá vốn</h1>
     <section class="card" id="inventory">
-      <h2>Kho và giá vốn <span id="invState" class="pill"></span></h2>
+      <h2 tabindex="-1">Kho và giá vốn <span id="invState" class="pill"></span></h2>
       <p class="muted small">Đơn hoàn tất được trừ kho theo công thức món tại ngày bán; đơn hủy được hoàn kho. Nhập hàng chỉ cập nhật tồn và giá bình quân, không ghi vào Chi phí để giá vốn không bị tính hai lần.</p>
       <div id="invWarn"></div>
       <div id="invKpis" class="kpis"></div>
       <div id="invStock"></div>
-      <p id="invMsg"></p>
+    </section>
+    <section class="card">
+      <h2>Nhập nhanh một nguyên liệu</h2>
       <form id="purchaseForm" class="row">
         <select name="ingredient" aria-label="Nguyên liệu nhập" required></select>
         <input name="qty" inputmode="decimal" placeholder="Số lượng" aria-label="Số lượng" required>
@@ -116,49 +159,72 @@
         <input name="supplier" maxlength="80" placeholder="Nhà cung cấp" aria-label="Nhà cung cấp">
         <button type="submit">Nhập hàng</button>
       </form>
+      <h2>Ghi hủy / hao hụt</h2>
       <form id="wasteForm" class="row">
         <select name="ingredient" aria-label="Nguyên liệu hủy" required></select>
         <input name="qty" inputmode="decimal" placeholder="Số lượng hủy" aria-label="Số lượng hủy" required>
         <input name="reason" maxlength="200" placeholder="Lý do, vd sữa hết hạn" aria-label="Lý do" required>
         <button type="submit" class="ghost">Ghi hủy</button>
       </form>
-      <details><summary>Kiểm kê</summary>
-        <p class="muted small">Nhập số đếm thực tế, để trống nguyên liệu không đếm. Lệch so với sổ phải ghi lý do.</p>
-        <form id="countForm"><div id="countRows"></div>
-          <div class="row"><input name="note" maxlength="200" placeholder="Ghi chú/lý do lệch" aria-label="Ghi chú kiểm kê"><button type="submit">Ghi kiểm kê</button></div>
-        </form>
-      </details>
-      <details><summary>Nguyên liệu</summary>
-        <form id="ingForm" class="row">
-          <select name="id" aria-label="Sửa nguyên liệu"><option value="">+ Nguyên liệu mới</option></select>
-          <input name="name" maxlength="80" placeholder="Tên, vd Sữa tươi" aria-label="Tên nguyên liệu" required>
-          <select name="unit" aria-label="Đơn vị gốc"><option value="g">g</option><option value="ml">ml</option><option value="cái">cái</option></select>
-          <input name="low" inputmode="decimal" placeholder="Báo khi tồn dưới" aria-label="Mức cảnh báo">
-          <label class="small"><input name="active" type="checkbox" checked style="display:inline;width:auto;min-height:0"> đang dùng</label>
-          <button type="submit">Lưu</button>
-        </form>
-      </details>
-      <details><summary>Công thức món</summary>
-        <p class="muted small">Định lượng theo đơn vị gốc cho 1 món (hoặc 1 phần extra). Lưu với ngày hiệu lực mới để giữ công thức cũ cho đơn đã bán. Lưu không dòng nào nghĩa là món không trừ kho.</p>
-        <form id="recipeForm">
-          <div class="row"><select name="product" aria-label="Món" required></select><label>Hiệu lực từ <input name="from" type="date" required></label></div>
-          <div id="recipeRows"></div>
-          <div class="row"><button type="button" id="addLine" class="ghost">+ Dòng</button><button type="submit">Lưu công thức</button><span id="recipeCost" class="muted small"></span></div>
-        </form>
-      </details>
-      <details><summary>Giá vốn theo công thức</summary><div id="menuCost"></div></details>
-      <details><summary>Giao dịch kho trong kỳ</summary><div id="invMoves"></div></details>
     </section>
-    <div class="grid2">
-      <section class="card"><h2>Doanh thu theo ngày</h2><div id="days" class="bars"></div></section>
-      <section class="card"><h2>Kênh và tiền về</h2><div id="channels"></div></section>
-    </div>
-    <section class="card"><h2>Việc cần xử lý <span id="issueCount" class="pill"></span></h2><div id="issues"></div></section>
-    <div class="grid2">
-      <section class="card"><h2>Món mang lãi nhiều nhất</h2><p class="muted small">Lãi gộp theo giá niêm yết trừ giá vốn, trước giảm giá cấp đơn.</p><div id="topItems"></div></section>
-      <section class="card"><h2>Món lãi thấp nhất</h2><p class="muted small">Xem lại giá, định lượng hoặc vai trò kéo khách trước khi ẩn.</p><div id="lowItems"></div></section>
-    </div>
+    <section class="card">
+      <h2>Kiểm kê</h2>
+      <p class="muted small">Nhập số đếm thực tế, để trống nguyên liệu không đếm. Lệch so với sổ phải ghi lý do.</p>
+      <form id="countForm"><div id="countRows"></div>
+        <div class="row"><input name="note" maxlength="200" placeholder="Ghi chú/lý do lệch" aria-label="Ghi chú kiểm kê"><button type="submit">Ghi kiểm kê</button></div>
+      </form>
+    </section>
+    <section class="card"><h2>Giao dịch kho trong kỳ</h2><div id="invMoves"></div></section>
+    </section>
+
+    <section class="view" data-view="nguyen-lieu" aria-labelledby="h-nguyen-lieu" hidden>
+    <h1 id="h-nguyen-lieu" class="vtitle" tabindex="-1">Nguyên liệu</h1>
+    <section class="card">
+      <h2 id="ingFormTitle">Thêm hoặc sửa nguyên liệu</h2>
+      <form id="ingForm">
+        <div class="row">
+          <select name="id" aria-label="Sửa nguyên liệu"><option value="">+ Nguyên liệu mới</option></select>
+          <label>Tên <input name="name" maxlength="80" placeholder="vd Sữa tươi" required></label>
+          <label>Đơn vị gốc <select name="unit"><option value="g">g</option><option value="ml">ml</option><option value="cái">cái</option></select></label>
+          <label>Báo khi tồn dưới <input name="low" inputmode="decimal" placeholder="0"></label>
+          <label class="check"><input name="active" type="checkbox" checked> đang dùng</label>
+        </div>
+        <fieldset class="measures">
+          <legend>Cỡ dụng cụ đong <span class="muted small">(1 dụng cụ = bao nhiêu <span class="mu">g</span>; để trống dùng mặc định)</span></legend>
+          <label>Muỗng nhỏ <input name="m_mn" inputmode="decimal" placeholder="5"></label>
+          <label>Muỗng tròn to <input name="m_mt" inputmode="decimal" placeholder="15"></label>
+          <label>Vợt topping <input name="m_vot" inputmode="decimal" placeholder="30"></label>
+        </fieldset>
+        <p class="muted small">Đổi cỡ dụng cụ thì mọi công thức đang đong nguyên liệu này bằng muỗng/vợt được tính lại theo cỡ mới.</p>
+        <div class="row"><button type="submit">Lưu nguyên liệu</button><button type="reset" class="ghost" id="ingReset">Nhập mới</button></div>
+      </form>
+    </section>
+    <section class="card"><h2>Danh sách nguyên liệu <span id="ingCount" class="pill"></span></h2>
+      <label class="search">Tìm <input id="ingSearch" type="search" placeholder="Gõ tên nguyên liệu"></label>
+      <div id="ingList"></div></section>
+    </section>
+
+    <section class="view" data-view="cong-thuc" aria-labelledby="h-cong-thuc" hidden>
+    <h1 id="h-cong-thuc" class="vtitle" tabindex="-1">Công thức món</h1>
+    <section class="card">
+      <h2>Sửa công thức</h2>
+      <p class="muted small">Định lượng cho 1 món (hoặc 1 phần extra). Món không cân đong chuẩn được thì chọn muỗng nhỏ, muỗng tròn to hoặc vợt topping; cỡ mỗi dụng cụ đặt ở mục Nguyên liệu. Lưu với ngày hiệu lực mới để giữ công thức cũ cho đơn đã bán. Lưu không dòng nào nghĩa là món không trừ kho.</p>
+      <form id="recipeForm">
+        <div class="row"><label>Món <select name="product" required></select></label><label>Hiệu lực từ <input name="from" type="date" required></label></div>
+        <div id="recipeRows"></div>
+        <div class="row"><button type="button" id="addLine" class="ghost">+ Dòng</button><button type="submit">Lưu công thức</button><span id="recipeCost" class="muted small"></span></div>
+      </form>
+    </section>
+    <section class="card"><h2>Giá vốn theo công thức</h2><p class="muted small">Bấm tên món để mở công thức.</p><div id="menuCost"></div></section>
+    </section>
+
+    <section class="view" data-view="chi-phi" aria-labelledby="h-chi-phi" hidden>
+    <h1 id="h-chi-phi" class="vtitle" tabindex="-1">Chi phí</h1>
     <section class="card"><h2>Chi phí trong kỳ</h2><div id="expenses"></div></section>
+    </section>
+
+    <section class="view" data-view="doi-soat" aria-labelledby="h-doi-soat" hidden>
+    <h1 id="h-doi-soat" class="vtitle" tabindex="-1">Đối soát Grab</h1>
     <section class="card" id="ledger">
       <h2>Đối soát Grab và chốt kỳ <span id="ledgerPeriod" class="pill"></span></h2>
       <p class="muted small">Theo tháng đang chọn. Nhập file CSV đối soát Grab, xem trước rồi mới ghi vào sổ. Nhập lại cùng file hoặc cùng mã dòng không tạo dòng mới.</p>
@@ -175,6 +241,8 @@
       <h3>Cần giải quyết trước khi chốt</h3><div id="resolution"></div>
       <details><summary>Lần nhập và nhật ký</summary><div id="batches"></div><div id="audit"></div></details>
     </section>
+    </section>
+    </div>
   </section>
   <p id="status" class="muted center" role="status"></p>
 </main>
