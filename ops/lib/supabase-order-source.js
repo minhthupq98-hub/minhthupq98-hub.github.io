@@ -1,7 +1,8 @@
 // Adapter CHỈ ĐỌC cho app Order THE KHE trên Supabase (PostgREST + Auth).
 // Dùng publishable key và phiên đăng nhập của chủ quán: RLS "owners manage ..."
 // tự giới hạn đúng dữ liệu của chủ, adapter không cần và không giữ khóa bí mật.
-// Chỉ gọi GET (đọc) và POST /auth/v1/token (đăng nhập), không ghi bảng nào.
+// Đọc bằng GET. Ghi duy nhất qua rpc() tới các hàm ops_* của sổ đối soát (ticket 3);
+// không ghi thẳng bảng nào của app Order.
 
 export class SupabaseSourceError extends Error {}
 
@@ -114,6 +115,25 @@ export class SupabaseClient {
     if (res.status === 401) throw new SupabaseSourceError('Phiên đăng nhập hết hạn, cần đăng nhập lại');
     if (!res.ok) throw new SupabaseSourceError(`Đọc ${table} lỗi ${res.status}: ${(await res.text()).slice(0, 200)}`);
     return res.json();
+  }
+
+  async rpc(fn, args) {
+    if (!this.accessToken) throw new SupabaseSourceError('Chưa đăng nhập');
+    let res;
+    try {
+      res = await this.fetch(`${this.url}/rest/v1/rpc/${fn}`, {
+        method: 'POST',
+        headers: { apikey: this.key, Authorization: `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(args),
+      });
+    } catch (err) {
+      throw new SupabaseSourceError(`Không gọi được Supabase: ${err.message}`);
+    }
+    if (res.status === 401) throw new SupabaseSourceError('Phiên đăng nhập hết hạn, cần đăng nhập lại');
+    const text = await res.text();
+    const body = text ? JSON.parse(text) : null;
+    if (!res.ok) throw new SupabaseSourceError(body?.message || `Gọi ${fn} lỗi ${res.status}`);
+    return body;
   }
 }
 
