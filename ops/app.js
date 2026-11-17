@@ -4,6 +4,7 @@ import { buildOwnerDashboard, monthRange, rangeToIso } from './lib/owner-dashboa
 import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js';
 import { buildReconcileReport } from './lib/reconcile-report.js';
 import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js';
+import { SupabaseInventoryStore, PURCHASE_UNITS, MOVE_LABEL, parseQtyInput, weightedAvgCost, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js';
 
 const OWN_KEY = 'the-khe-ops-session';
 const $ = (id) => document.getElementById(id);
@@ -17,6 +18,8 @@ const fmtTime = (iso) => (iso ? new Date(iso).toLocaleString('vi-VN', { timeZone
 const client = new SupabaseClient({ url: SUPABASE_URL, key: SUPABASE_KEY });
 const store = new SupabaseSettlementStore(client);
 const shifts = new SupabaseShiftStore(client);
+const inventory = new SupabaseInventoryStore(client);
+let inv = null;
 let shiftState = { startDate: null, open: null, moves: [], recent: [] };
 let quick = 'month';
 
@@ -88,6 +91,7 @@ async function load() {
     render(d, settings);
     $('status').textContent = '';
     await loadShift();
+    loadInventory();
     loadLedger();
   } catch (err) {
     if (/đăng nhập/i.test(err.message)) return showLogin(err.message);
@@ -363,6 +367,7 @@ async function shiftAction(fn, okMsg) {
     $('shiftMsg').innerHTML = `<div class="warn bad">${esc(err.message)}</div>`;
   }
   await loadShift();
+  loadInventory();
   loadLedger();
 }
 
@@ -403,6 +408,208 @@ $('saveStartDate').addEventListener('click', () => {
   const d = $('startDate').value;
   if (!d) { $('grabPreview').innerHTML = '<div class="warn bad">Chọn ngày bắt đầu sổ trước.</div>'; return; }
   shiftAction(() => shifts.setStartDate(d), `Đã đặt ngày bắt đầu sổ ${d}.`);
+});
+
+// ===== Ticket 5: kho, công thức món và giá vốn (ghi qua RPC ops_*) =====
+const qtyFmt = (n, unit) => `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(Number(n))} ${unit}`;
+const invMsg = (html) => { $('invMsg').innerHTML = html; };
+const options = (items, sel = '') => items.map((i) => `<option value="${esc(i.value)}"${i.value === sel ? ' selected' : ''}>${esc(i.label)}</option>`).join('');
+
+async function loadInventory() {
+  try {
+    await inventory.sync();
+    inv = await inventory.load(currentRange());
+    renderInventory();
+  } catch (err) {
+    $('invWarn').innerHTML = `<div class="warn bad">Không đọc được kho: ${esc(err.message)}</div>`;
+  }
+}
+
+function renderInventory() {
+  const { levels, recipes, products, moves, postings } = inv;
+  const stock = stockStatus(levels);
+  const active = levels.filter((l) => l.active);
+  const byId = new Map(levels.map((l) => [l.ingredient_id, l]));
+  const c = cogsSummary(moves);
+  const missing = missingRecipes(postings);
+  const low = stock.filter((x) => x.low || x.negative);
+  $('invState').textContent = levels.length ? `${active.length} nguyên liệu` : 'chưa có nguyên liệu';
+  const warns = [];
+  if (!levels.length) warns.push('<div class="warn">Chưa có nguyên liệu. Mở "Nguyên liệu" để thêm, sau đó nhập công thức món và nhập hàng đầu kỳ.</div>');
+  if (missing.length) warns.push(`<div class="warn">Món đã bán chưa có công thức nên chưa trừ kho: ${missing.slice(0, 8).map((m) => `${esc(m.name)} (${m.orders} đơn)`).join(', ')}${missing.length > 8 ? ', ...' : ''}. Nhập công thức trước lần kiểm kê tới thì các đơn này sẽ được trừ bù.</div>`);
+  if (stock.some((x) => x.negative)) warns.push('<div class="warn bad">Có nguyên liệu tồn âm: bán nhiều hơn số đã nhập. Kiểm tra nhập hàng hoặc kiểm kê lại.</div>');
+  $('invWarn').innerHTML = warns.join('');
+  $('invKpis').innerHTML = [
+    ['Giá vốn theo kho', vnd(c.sold)], ['Hủy/hao hụt', vnd(c.waste)], ['Lệch kiểm kê', vnd(c.countLoss)],
+    ['Nhập hàng trong kỳ', vnd(c.purchases)], ['Giá trị tồn hiện tại', vnd(stock.reduce((s, x) => s + Math.max(x.value, 0), 0))],
+    ['Cần nhập thêm', String(low.length)],
+  ].map(([l, v]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
+  $('invStock').innerHTML = table([['Nguyên liệu'], ['Tồn', 1], ['Giá bình quân', 1], ['Giá trị', 1], ['Kiểm kê gần nhất']],
+    stock.map((x) => [
+      `${esc(x.name)}${x.negative ? '<span class="tag">âm</span>' : x.low ? '<span class="tag">sắp hết</span>' : ''}`,
+      qtyFmt(x.onHand, x.unit), `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(Number(x.avg_cost))}đ/${esc(x.unit)}`,
+      vnd(x.value), x.last_count_at ? fmtTime(x.last_count_at) : '<span class="muted">chưa</span>',
+    ]));
+
+  const ingOpts = options(active.map((l) => ({ value: l.ingredient_id, label: `${l.name} (${l.unit})` })));
+  for (const f of ['purchaseForm', 'wasteForm']) {
+    const sel = $(f).elements.ingredient; const keep = sel.value;
+    sel.innerHTML = ingOpts; if (keep && active.some((l) => l.ingredient_id === keep)) sel.value = keep;
+  }
+  syncPurchaseUnits();
+  $('countRows').innerHTML = active.length ? table([['Nguyên liệu'], ['Sổ', 1], ['Đếm được', 1]], active.map((l) => [
+    esc(l.name), qtyFmt(l.on_hand, l.unit), `<input name="c_${esc(l.ingredient_id)}" inputmode="decimal" aria-label="Đếm ${esc(l.name)}" style="max-width:120px;margin-left:auto">`,
+  ])) : '<p class="muted">Chưa có nguyên liệu.</p>';
+  const ingSel = $('ingForm').elements.id; const keepIng = ingSel.value;
+  ingSel.innerHTML = '<option value="">+ Nguyên liệu mới</option>' + options(levels.map((l) => ({ value: l.ingredient_id, label: `${l.name}${l.active ? '' : ' (ngừng)'}` })), keepIng);
+
+  const prodSel = $('recipeForm').elements.product; const keepProd = prodSel.value;
+  const sellable = products.filter((p) => p.active);
+  prodSel.innerHTML = options(sellable.map((p) => ({ value: p.id, label: `${p.category} · ${p.name}${recipeAt(recipes, p.id, today()) ? '' : ' (chưa có)'}` })), keepProd);
+  if (!$('recipeForm').elements.from.value) $('recipeForm').elements.from.value = today();
+  fillRecipe();
+
+  const rows = menuCostTable({ products, recipes, ingredients: levels, date: today() });
+  $('menuCost').innerHTML = table([['Món'], ['Giá bán', 1], ['Giá vốn app', 1], ['Theo công thức', 1], ['Chênh', 1], ['Lãi gộp', 1]],
+    rows.map((r) => [
+      `${esc(r.name)} <span class="muted small">${esc(r.category)}</span>${r.unpriced ? '<span class="tag">NL chưa có giá</span>' : ''}`,
+      vnd(r.price), vnd(r.appCost), r.hasRecipe ? vnd(r.recipeCost) : '<span class="muted">chưa có</span>',
+      r.diff == null ? '-' : `<span class="${r.diff > 0 ? 'down' : ''}">${r.diff > 0 ? '+' : ''}${vnd(r.diff)}</span>`,
+      r.marginPct == null ? '-' : `${r.marginPct}%`,
+    ]));
+  const shown = moves.filter((m) => m.kind !== 'sale').slice(0, 200);
+  const sales = moves.filter((m) => m.kind === 'sale').length;
+  $('invMoves').innerHTML = `<p class="muted small">${sales} dòng trừ kho do bán (không liệt kê).</p>` + table([['Lúc'], ['Loại'], ['Nguyên liệu'], ['Số lượng', 1], ['Giá trị', 1], ['Ghi chú']],
+    shown.map((m) => { const l = byId.get(m.ingredient_id); return [
+      fmtTime(m.created_at), MOVE_LABEL[m.kind] ?? m.kind, esc(l?.name ?? '?'), qtyFmt(m.qty, l?.unit ?? ''), vnd(m.value), esc([m.supplier, m.note].filter(Boolean).join(' · ')),
+    ]; }));
+}
+
+function syncPurchaseUnits() {
+  const f = $('purchaseForm').elements; const l = inv?.levels.find((x) => x.ingredient_id === f.ingredient.value);
+  const units = Object.keys(PURCHASE_UNITS[l?.unit] ?? {});
+  if ([...f.unit.options].map((o) => o.value).join() !== units.join()) f.unit.innerHTML = options(units.map((u) => ({ value: u, label: u })));
+}
+
+function recipeLine(line = {}) {
+  const active = inv.levels.filter((l) => l.active || l.ingredient_id === line.ingredientId);
+  return `<div class="row rline"><select name="ing" aria-label="Nguyên liệu"><option value="">Chọn nguyên liệu</option>${options(active.map((l) => ({ value: l.ingredient_id, label: `${l.name} (${l.unit})` })), line.ingredientId)}</select>`
+    + `<input name="qty" inputmode="decimal" placeholder="Định lượng" aria-label="Định lượng" value="${line.qty ?? ''}" style="max-width:140px"><button type="button" class="ghost rm" aria-label="Bỏ dòng">Bỏ</button></div>`;
+}
+
+function fillRecipe() {
+  const f = $('recipeForm').elements;
+  const lines = recipeAt(inv.recipes, f.product.value, f.from.value || today()) ?? [];
+  $('recipeRows').innerHTML = (lines.length ? lines : [{}]).map(recipeLine).join('');
+  updateRecipeCost();
+}
+
+function readRecipeLines() {
+  const out = [];
+  for (const row of $('recipeRows').querySelectorAll('.rline')) {
+    const id = row.querySelector('[name=ing]').value; const raw = row.querySelector('[name=qty]').value.trim();
+    if (!id && !raw) continue;
+    const qty = parseQtyInput(raw);
+    if (!id || !qty) throw new Error('Mỗi dòng công thức cần nguyên liệu và định lượng lớn hơn 0.');
+    out.push({ ingredientId: id, qty });
+  }
+  return out;
+}
+
+function updateRecipeCost() {
+  try {
+    const cost = recipeCost(readRecipeLines(), new Map(inv.levels.map((l) => [l.ingredient_id, l])));
+    const p = inv.products.find((x) => x.id === $('recipeForm').elements.product.value);
+    $('recipeCost').textContent = `Giá vốn theo giá bình quân hiện tại: ${vnd(cost)}${p ? ` · giá app ${vnd(Number(p.cost ?? 0))}` : ''}`;
+  } catch { $('recipeCost').textContent = ''; }
+}
+
+async function invAction(fn) {
+  try {
+    const msg = await fn();
+    invMsg(`<div class="ok">${esc(msg)}</div>`);
+    inv = await inventory.load(currentRange());
+    renderInventory();
+    return true;
+  } catch (err) {
+    invMsg(`<div class="warn bad">${esc(err.message)}</div>`);
+    return false;
+  }
+}
+
+$('purchaseForm').elements.ingredient.addEventListener('change', syncPurchaseUnits);
+$('purchaseForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = e.target.elements; const l = inv.levels.find((x) => x.ingredient_id === f.ingredient.value);
+  const qty = parseQtyInput(f.qty.value, f.unit.value, l?.unit); const total = parseVndInput(f.total.value);
+  if (!l || !qty) return invMsg('<div class="warn bad">Số lượng phải lớn hơn 0, vd 1,5.</div>');
+  if (total == null) return invMsg('<div class="warn bad">Tổng tiền phải là số, vd 180000.</div>');
+  const avg = weightedAvgCost(l.on_hand, l.avg_cost, qty, total);
+  invAction(async () => {
+    const r = await inventory.purchase({ ingredientId: l.ingredient_id, qty, total, supplier: f.supplier.value });
+    return `Đã nhập ${qtyFmt(qty, l.unit)} ${l.name}, ${vnd(total)}. Giá bình quân mới ${Number(r?.avg_cost ?? avg).toLocaleString('vi-VN')}đ/${l.unit}.`;
+  }).then((ok) => ok && e.target.reset());
+});
+
+$('wasteForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = e.target.elements; const l = inv.levels.find((x) => x.ingredient_id === f.ingredient.value);
+  const qty = parseQtyInput(f.qty.value);
+  if (!l || !qty) return invMsg('<div class="warn bad">Số lượng hủy phải lớn hơn 0.</div>');
+  invAction(async () => { await inventory.waste(l.ingredient_id, qty, f.reason.value); return `Đã ghi hủy ${qtyFmt(qty, l.unit)} ${l.name}.`; })
+    .then((ok) => ok && e.target.reset());
+});
+
+$('countForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const lines = [];
+  for (const l of inv.levels.filter((x) => x.active)) {
+    const raw = e.target.elements[`c_${l.ingredient_id}`]?.value.trim();
+    if (!raw) continue;
+    const counted = parseQtyInput(raw);
+    if (counted == null) return invMsg(`<div class="warn bad">Số đếm của ${esc(l.name)} không hợp lệ.</div>`);
+    lines.push({ ingredientId: l.ingredient_id, counted });
+  }
+  if (!lines.length) return invMsg('<div class="warn bad">Chưa nhập số đếm nào.</div>');
+  invAction(async () => {
+    const r = await inventory.count(lines, e.target.elements.note.value) ?? [];
+    const diff = r.filter((x) => Number(x.diff) !== 0);
+    return diff.length ? `Đã ghi kiểm kê ${r.length} nguyên liệu, lệch: ${diff.map((x) => `${x.ingredient} ${Number(x.diff) > 0 ? '+' : ''}${qtyFmt(x.diff, x.unit)} (${vnd(Number(x.value))})`).join('; ')}.`
+      : `Đã ghi kiểm kê ${r.length} nguyên liệu, khớp sổ.`;
+  }).then((ok) => ok && e.target.reset());
+});
+
+$('ingForm').elements.id.addEventListener('change', (e) => {
+  const f = $('ingForm').elements; const l = inv.levels.find((x) => x.ingredient_id === e.target.value);
+  f.name.value = l?.name ?? ''; f.unit.value = l?.unit ?? 'g'; f.low.value = l ? Number(l.low_stock) || '' : ''; f.active.checked = l ? l.active : true;
+});
+$('ingForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = e.target.elements; const low = f.low.value.trim() ? parseQtyInput(f.low.value) : 0;
+  if (low == null) return invMsg('<div class="warn bad">Mức cảnh báo phải là số.</div>');
+  invAction(async () => {
+    await inventory.saveIngredient({ id: f.id.value || null, name: f.name.value.trim(), unit: f.unit.value, lowStock: low, active: f.active.checked });
+    return `Đã lưu nguyên liệu ${f.name.value.trim()}.`;
+  }).then((ok) => ok && e.target.reset());
+});
+
+$('recipeForm').elements.product.addEventListener('change', fillRecipe);
+$('recipeForm').elements.from.addEventListener('change', fillRecipe);
+$('recipeRows').addEventListener('input', updateRecipeCost);
+$('recipeRows').addEventListener('change', updateRecipeCost);
+$('recipeRows').addEventListener('click', (e) => { if (e.target.classList.contains('rm')) { e.target.closest('.rline').remove(); updateRecipeCost(); } });
+$('addLine').addEventListener('click', () => { $('recipeRows').insertAdjacentHTML('beforeend', recipeLine()); });
+$('recipeForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = e.target.elements; const p = inv.products.find((x) => x.id === f.product.value);
+  let lines;
+  try { lines = readRecipeLines(); } catch (err) { return invMsg(`<div class="warn bad">${esc(err.message)}</div>`); }
+  invAction(async () => {
+    await inventory.setRecipe(f.product.value, f.from.value, lines);
+    const r = await inventory.sync();
+    const extra = r?.completed ? ` Đã trừ bù kho cho ${r.completed} đơn bán trước đó.` : '';
+    return (lines.length ? `Đã lưu công thức ${p?.name} từ ${f.from.value}, ${lines.length} nguyên liệu.` : `Đã đặt ${p?.name} không trừ kho từ ${f.from.value}.`) + extra;
+  });
 });
 
 function start() {
