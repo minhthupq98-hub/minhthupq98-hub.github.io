@@ -41,28 +41,29 @@
       <li><a href="#chi-phi" data-nav="chi-phi"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 2 2V2l-2 2-3-2-3 2-3-2-3 2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Chi phí</span><span class="nb" id="nb-chi-phi"></span></a></li>
       <li><a href="#doi-soat" data-nav="doi-soat"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M5 7l-3 7a3.5 3.5 0 0 0 6 0zM19 7l-3 7a3.5 3.5 0 0 0 6 0zM8 21h8"/></svg><span>Đối soát Grab</span><span class="nb" id="nb-doi-soat"></span></a></li>
       </ul>
-      <p class="muted small navhint">Phím tắt: 1 đến 8 để chuyển mục, R để tải lại.</p>
+      <p class="muted small navhint kbd-only">Phím tắt: 1 đến 8 để chuyển mục, R để tải lại.</p>
     </nav>
     <div id="scrim" class="scrim" hidden></div>
     <div class="views">
-    <div class="filters">
-      <div class="seg" role="group" aria-label="Kỳ">
-        <button data-q="today">Hôm nay</button>
-        <button data-q="7d">7 ngày</button>
-        <button data-q="month" class="on">Tháng</button>
+    <div class="filters" id="filters">
+      <div class="seg" role="group" aria-label="Kỳ xem số">
+        <button type="button" data-q="today" aria-pressed="false">Hôm nay</button>
+        <button type="button" data-q="7d" aria-pressed="false">7 ngày</button>
+        <button type="button" data-q="month" class="on" aria-pressed="true">Tháng</button>
       </div>
-      <input id="month" type="month" aria-label="Chọn tháng">
-      <button id="reload" class="ghost" title="Tải lại (R)">Tải lại</button>
+      <select id="month" aria-label="Chọn tháng"></select>
+      <button id="reload" type="button" class="ghost icon-text" title="Tải lại (R)"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg><span>Tải lại</span></button>
+      <p id="meta" class="muted small meta"></p>
     </div>
-    <p id="meta" class="muted small"></p>
     <div id="invMsg" class="flash" aria-live="polite"></div>
 
     <section class="view" data-view="tong-quan" aria-labelledby="h-tong-quan">
     <h1 id="h-tong-quan" class="vtitle" tabindex="-1">Tổng quan</h1>
     <div id="warnings"></div>
-    <div id="kpis" class="kpis"></div>
+    <div id="kpis" class="kpis hero"></div>
+    <div id="kpis2" class="kpis minor"></div>
     <div class="grid2">
-      <section class="card"><h2>Doanh thu theo ngày</h2><div id="days" class="bars"></div></section>
+      <section class="card"><h2>Doanh thu theo ngày</h2><p id="dayReadout" class="readout" aria-live="polite"></p><div id="days" class="chart"></div></section>
       <section class="card"><h2>Kênh và tiền về</h2><div id="channels"></div></section>
     </div>
     <section class="card"><h2>Việc cần xử lý <span id="issueCount" class="pill"></span></h2><div id="issues"></div></section>
@@ -77,26 +78,28 @@
     <section class="card" id="shift">
       <h2>Ca và tiền mặt <span id="shiftState" class="pill"></span></h2>
       <div id="shiftStatus"></div>
-      <form id="openShiftForm" class="row" hidden>
-        <label>Tiền đầu ca <input name="cash" inputmode="numeric" placeholder="500.000" required></label>
-        <label>Ghi chú <input name="note" maxlength="200"></label>
-        <button type="submit">Mở ca</button>
+      <form id="openShiftForm" class="fields" hidden>
+        <label>Tiền đầu ca <input name="cash" inputmode="numeric" placeholder="vd 500.000" required></label>
+        <label class="wide">Ghi chú <span class="opt">(tùy chọn)</span><input name="note" maxlength="200"></label>
+        <div class="act"><button type="submit">Mở ca</button></div>
       </form>
       <div id="shiftOpen" hidden>
         <div id="shiftKpis" class="kpis"></div>
-        <form id="moveForm" class="row">
-          <select name="kind" aria-label="Loại"><option value="expense">Chi phí</option><option value="withdraw">Rút tiền</option><option value="deposit">Nộp thêm</option></select>
-          <input name="amount" inputmode="numeric" placeholder="Số tiền" aria-label="Số tiền" required>
-          <input name="note" maxlength="200" placeholder="Nội dung, vd mua đá" aria-label="Nội dung" required>
-          <input name="category" list="expenseCats" placeholder="Nhóm chi phí" aria-label="Nhóm chi phí">
+        <h3>Ghi tiền ra vào két</h3>
+        <form id="moveForm" class="fields">
+          <label>Loại <select name="kind"><option value="expense">Chi phí</option><option value="withdraw">Rút tiền</option><option value="deposit">Nộp thêm</option></select></label>
+          <label>Số tiền <input name="amount" inputmode="numeric" placeholder="vd 40.000" required></label>
+          <label class="wide">Nội dung <input name="note" maxlength="200" placeholder="vd mua đá" required></label>
+          <label>Nhóm chi phí <input name="category" list="expenseCats" placeholder="Khác"></label>
           <datalist id="expenseCats"><option>Nguyên liệu ngoài cost món</option><option>Vận hành</option><option>Lương</option><option>Mặt bằng</option><option>Marketing</option><option>Khác</option></datalist>
-          <button type="submit">Ghi</button>
+          <div class="act"><button type="submit">Ghi</button></div>
         </form>
         <div id="moves"></div>
-        <form id="closeShiftForm" class="row">
+        <h3>Chốt ca</h3>
+        <form id="closeShiftForm" class="fields">
           <label>Tiền đếm được trong két <input name="counted" inputmode="numeric" required></label>
-          <label>Lý do nếu lệch <input name="note" maxlength="200"></label>
-          <button type="submit">Chốt ca</button>
+          <label class="wide">Lý do nếu lệch <input name="note" maxlength="200"></label>
+          <div class="act"><button type="submit">Chốt ca</button></div>
         </form>
       </div>
       <p id="shiftMsg"></p>
@@ -151,27 +154,29 @@
     </section>
     <section class="card">
       <h2>Nhập nhanh một nguyên liệu</h2>
-      <form id="purchaseForm" class="row">
-        <select name="ingredient" aria-label="Nguyên liệu nhập" required></select>
-        <input name="qty" inputmode="decimal" placeholder="Số lượng" aria-label="Số lượng" required>
-        <select name="unit" aria-label="Đơn vị nhập"></select>
-        <input name="total" inputmode="numeric" placeholder="Tổng tiền" aria-label="Tổng tiền" required>
-        <input name="supplier" maxlength="80" placeholder="Nhà cung cấp" aria-label="Nhà cung cấp">
-        <button type="submit">Nhập hàng</button>
+      <p class="muted small">Có hóa đơn hoặc nhiều dòng thì dùng mục <a href="#nhap-kho" class="link">Nhập kho (AI)</a>.</p>
+      <form id="purchaseForm" class="fields">
+        <label class="wide">Nguyên liệu <select name="ingredient" required></select></label>
+        <label>Số lượng <span class="pair"><input name="qty" inputmode="decimal" placeholder="vd 1,5" required><select name="unit" aria-label="Đơn vị nhập"></select></span></label>
+        <label>Tổng tiền <input name="total" inputmode="numeric" placeholder="vd 180.000" required></label>
+        <label>Nhà cung cấp <span class="opt">(tùy chọn)</span><input name="supplier" maxlength="80"></label>
+        <div class="act"><button type="submit">Nhập hàng</button></div>
       </form>
+    </section>
+    <section class="card">
       <h2>Ghi hủy / hao hụt</h2>
-      <form id="wasteForm" class="row">
-        <select name="ingredient" aria-label="Nguyên liệu hủy" required></select>
-        <input name="qty" inputmode="decimal" placeholder="Số lượng hủy" aria-label="Số lượng hủy" required>
-        <input name="reason" maxlength="200" placeholder="Lý do, vd sữa hết hạn" aria-label="Lý do" required>
-        <button type="submit" class="ghost">Ghi hủy</button>
+      <form id="wasteForm" class="fields">
+        <label class="wide">Nguyên liệu <select name="ingredient" required></select></label>
+        <label>Số lượng hủy <input name="qty" inputmode="decimal" required></label>
+        <label class="wide">Lý do <input name="reason" maxlength="200" placeholder="vd sữa hết hạn" required></label>
+        <div class="act"><button type="submit" class="ghost">Ghi hủy</button></div>
       </form>
     </section>
     <section class="card">
       <h2>Kiểm kê</h2>
       <p class="muted small">Nhập số đếm thực tế, để trống nguyên liệu không đếm. Lệch so với sổ phải ghi lý do.</p>
       <form id="countForm"><div id="countRows"></div>
-        <div class="row"><input name="note" maxlength="200" placeholder="Ghi chú/lý do lệch" aria-label="Ghi chú kiểm kê"><button type="submit">Ghi kiểm kê</button></div>
+        <div class="fields"><label class="wide">Ghi chú / lý do lệch <input name="note" maxlength="200"></label><div class="act"><button type="submit">Ghi kiểm kê</button></div></div>
       </form>
     </section>
     <section class="card"><h2>Giao dịch kho trong kỳ</h2><div id="invMoves"></div></section>
@@ -182,21 +187,21 @@
     <section class="card">
       <h2 id="ingFormTitle">Thêm hoặc sửa nguyên liệu</h2>
       <form id="ingForm">
-        <div class="row">
-          <select name="id" aria-label="Sửa nguyên liệu"><option value="">+ Nguyên liệu mới</option></select>
-          <label>Tên <input name="name" maxlength="80" placeholder="vd Sữa tươi" required></label>
+        <div class="fields">
+          <label class="wide">Chọn để sửa <select name="id"><option value="">+ Thêm nguyên liệu mới</option></select></label>
+          <label class="wide">Tên nguyên liệu <input name="name" maxlength="80" placeholder="vd Sữa tươi" required></label>
           <label>Đơn vị gốc <select name="unit"><option value="g">g</option><option value="ml">ml</option><option value="cái">cái</option></select></label>
-          <label>Báo khi tồn dưới <input name="low" inputmode="decimal" placeholder="0"></label>
-          <label class="check"><input name="active" type="checkbox" checked> đang dùng</label>
+          <label>Báo sắp hết khi tồn dưới <span class="pair"><input name="low" inputmode="decimal" placeholder="0"><span class="unit mu2">g</span></span></label>
+          <label class="check toggle"><input name="active" type="checkbox" checked> Đang dùng</label>
         </div>
         <fieldset class="measures">
-          <legend>Cỡ dụng cụ đong <span class="muted small">(1 dụng cụ = bao nhiêu <span class="mu">g</span>; để trống dùng mặc định)</span></legend>
-          <label>Muỗng nhỏ <input name="m_mn" inputmode="decimal" placeholder="5"></label>
-          <label>Muỗng tròn to <input name="m_mt" inputmode="decimal" placeholder="15"></label>
-          <label>Vợt topping <input name="m_vot" inputmode="decimal" placeholder="30"></label>
+          <legend>Cỡ dụng cụ đong</legend>
+          <p class="muted small span">1 dụng cụ bằng bao nhiêu <span class="mu">g</span>. Để trống thì dùng cỡ mặc định (số mờ). Đổi cỡ thì mọi công thức đong bằng dụng cụ đó tự tính lại.</p>
+          <label>Muỗng nhỏ <span class="pair"><input name="m_mn" inputmode="decimal" placeholder="5"><span class="unit mu">g</span></span></label>
+          <label>Muỗng tròn to <span class="pair"><input name="m_mt" inputmode="decimal" placeholder="15"><span class="unit mu">g</span></span></label>
+          <label>Vợt topping <span class="pair"><input name="m_vot" inputmode="decimal" placeholder="30"><span class="unit mu">g</span></span></label>
         </fieldset>
-        <p class="muted small">Đổi cỡ dụng cụ thì mọi công thức đang đong nguyên liệu này bằng muỗng/vợt được tính lại theo cỡ mới.</p>
-        <div class="row"><button type="submit">Lưu nguyên liệu</button><button type="reset" class="ghost" id="ingReset">Nhập mới</button></div>
+        <div class="row"><button type="submit">Lưu nguyên liệu</button><button type="reset" class="ghost" id="ingReset">Hủy, nhập mới</button></div>
       </form>
     </section>
     <section class="card"><h2>Danh sách nguyên liệu <span id="ingCount" class="pill"></span></h2>
@@ -210,9 +215,11 @@
       <h2>Sửa công thức</h2>
       <p class="muted small">Định lượng cho 1 món (hoặc 1 phần extra). Món không cân đong chuẩn được thì chọn muỗng nhỏ, muỗng tròn to hoặc vợt topping; cỡ mỗi dụng cụ đặt ở mục Nguyên liệu. Lưu với ngày hiệu lực mới để giữ công thức cũ cho đơn đã bán. Lưu không dòng nào nghĩa là món không trừ kho.</p>
       <form id="recipeForm">
-        <div class="row"><label>Món <select name="product" required></select></label><label>Hiệu lực từ <input name="from" type="date" required></label></div>
+        <div class="fields"><label class="wide">Món <select name="product" required></select></label><label>Hiệu lực từ <input name="from" type="date" required></label></div>
+        <div class="rhead" aria-hidden="true"><span>Nguyên liệu</span><span>Lượng</span><span>Đong bằng</span><span></span></div>
         <div id="recipeRows"></div>
-        <div class="row"><button type="button" id="addLine" class="ghost">+ Dòng</button><button type="submit">Lưu công thức</button><span id="recipeCost" class="muted small"></span></div>
+        <button type="button" id="addLine" class="ghost add">+ Thêm nguyên liệu</button>
+        <div class="savebar"><span id="recipeCost" class="small"></span><button type="submit">Lưu công thức</button></div>
       </form>
     </section>
     <section class="card"><h2>Giá vốn theo công thức</h2><p class="muted small">Bấm tên món để mở công thức.</p><div id="menuCost"></div></section>
@@ -228,11 +235,11 @@
     <section class="card" id="ledger">
       <h2>Đối soát Grab và chốt kỳ <span id="ledgerPeriod" class="pill"></span></h2>
       <p class="muted small">Theo tháng đang chọn. Nhập file CSV đối soát Grab, xem trước rồi mới ghi vào sổ. Nhập lại cùng file hoặc cùng mã dòng không tạo dòng mới.</p>
-      <div class="row"><label>Ngày bắt đầu sổ <input id="startDate" type="date"></label><button id="saveStartDate" class="ghost">Lưu ngày</button><span class="muted small">Đơn và dòng Grab trước ngày này bị bỏ qua khi đối soát và chốt kỳ.</span></div>
+      <div class="fields"><label>Ngày bắt đầu sổ <input id="startDate" type="date"><span class="hint">Đơn và dòng Grab trước ngày này bị bỏ qua khi đối soát, chốt kỳ.</span></label><div class="act"><button id="saveStartDate" type="button" class="ghost">Lưu ngày</button></div></div>
       <div id="ledgerStatus"></div>
       <div id="ledgerKpis" class="kpis"></div>
       <div class="row">
-        <label class="file">Chọn file CSV Grab <input id="grabFile" type="file" accept=".csv,text/csv"></label>
+        <label class="drop slim"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg><span><b>Chọn file CSV Grab</b><span class="muted small">Xem trước rồi mới ghi vào sổ</span></span><input id="grabFile" type="file" accept=".csv,text/csv" class="sr"></label>
         <button id="lockBtn">Chốt kỳ</button>
         <button id="reopenBtn" class="ghost" hidden>Mở lại kỳ</button>
       </div>

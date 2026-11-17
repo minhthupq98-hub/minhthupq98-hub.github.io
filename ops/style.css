@@ -26,8 +26,6 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #d9a0
 .grid2{display:grid;grid-template-columns:1fr;gap:0 14px}@media(min-width:820px){.grid2{grid-template-columns:1fr 1fr}}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}th{font-weight:600;color:var(--muted);font-size:13px}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
-.bars{display:flex;align-items:flex-end;gap:2px;height:140px;border-bottom:1px solid var(--line)}
-.bars div{flex:1;background:#c9a88a;border-radius:3px 3px 0 0;min-height:1px}.bars div:hover{background:var(--brand)}
 .pill{font-size:12px;background:var(--line);border-radius:99px;padding:1px 8px;vertical-align:middle}
 details summary{cursor:pointer;color:var(--brand);margin-top:6px}
 
@@ -114,7 +112,7 @@ button.menu{color:var(--ink)}
 .sidenav a[aria-current=page] .nb{background:rgba(255,255,255,.22);color:#fff}
 .navhint{margin:14px 12px 0}
 .vtitle{font-size:22px;margin:6px 0 12px;outline:none}
-.vtitle:focus-visible{outline:3px solid #d9a066;outline-offset:4px;border-radius:4px}
+.vtitle:focus,.vtitle:focus-visible{outline:none}
 .flash:empty{display:none}
 .scrim{position:fixed;inset:0;background:rgba(43,36,32,.38);z-index:7}
 fieldset.measures{border:1px solid var(--line);border-radius:10px;padding:4px 12px 10px;margin:10px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 12px}
@@ -123,10 +121,6 @@ fieldset.measures legend{padding:0 6px;font-weight:600}
 label.search{max-width:360px}
 .ings td .tag{margin-left:0;margin-right:4px}
 button.linkish{background:none;border:0;color:var(--brand);padding:0;min-height:44px;text-align:left;text-decoration:underline;text-underline-offset:3px}
-.rline{align-items:flex-end}
-.rline select[name=ing]{flex:1 1 220px;min-width:0}
-.rline select[name=how]{flex:0 1 170px}
-.rline .conv{font-size:13px;color:var(--muted);min-width:70px;align-self:center}
 @media (min-width:960px){
   .shell{grid-template-columns:228px minmax(0,1fr)}
   .sidenav{position:sticky;top:72px;max-height:calc(100vh - 88px);overflow:auto;padding:4px 0}
@@ -143,3 +137,90 @@ button.linkish{background:none;border:0;color:var(--brand);padding:0;min-height:
   .top .brand .muted{display:none}
   .top .brand b,.top-actions .link,#logout{white-space:nowrap}
 }
+
+/* Ticket 8: rà giao diện */
+select:focus-visible{outline:3px solid #d9a066;outline-offset:2px}
+input,select{color:var(--ink)}
+input::placeholder{color:#a99a8e}
+/* Thanh chọn kỳ */
+.filters{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:14px}
+.filters select{width:auto;min-width:150px}
+.filters .meta{flex:1 1 260px;margin:0 4px;text-align:right}
+.icon-text{display:inline-flex;align-items:center;gap:6px}
+@media (max-width:640px){
+  .filters{gap:6px}.filters .seg{flex:1 1 100%}.seg button{flex:1;padding:8px 6px}
+  .filters select{flex:1}.filters .meta{text-align:left;flex-basis:100%}
+}
+/* KPI: 4 số chính to, phần còn lại nhỏ */
+.kpis.hero{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:10px}
+.kpis.hero .kpi{padding:14px 16px}.kpis.hero .v{font-size:24px;letter-spacing:-.01em}
+.kpis.hero .kpi:first-child{border-color:#d8c2ad;background:linear-gradient(180deg,#fffaf5,#fff)}
+.kpis.minor{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.kpis.minor .kpi{padding:10px 12px}.kpis.minor .v{font-size:17px}
+.kpi .v{font-variant-numeric:tabular-nums}
+@media (max-width:900px){.kpis.hero{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.kpis.hero .v{font-size:20px}.kpis.minor{grid-template-columns:1fr 1fr}}
+/* Biểu đồ doanh thu theo ngày */
+.readout{margin:-4px 0 10px;font-size:14px;min-height:20px;font-variant-numeric:tabular-nums}
+.chart .plot{position:relative;height:180px;margin-left:40px;margin-bottom:24px}
+.chart .g{position:absolute;left:0;right:0;border-top:1px dashed var(--line)}
+.chart .g:last-child{border-top:1px solid #d9cec3}
+.chart .g span{position:absolute;right:calc(100% + 6px);top:-8px;font-size:11px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.chart .cols{position:absolute;inset:0;display:flex;align-items:stretch;gap:3px}
+.chart .bar{flex:1;min-width:0;min-height:0;padding:0;background:transparent;border-radius:4px 4px 0 0;position:relative;display:flex;align-items:flex-end;cursor:pointer}
+.chart .bar i{display:block;width:100%;background:#cfae90;border-radius:4px 4px 0 0;min-height:2px;transition:background .15s}
+.chart .bar.zero i{background:#ece3da}
+.chart .bar:hover i,.chart .bar.sel i{background:var(--brand)}
+.chart .bar.today i{background:#d9a066}.chart .bar.today.sel i,.chart .bar.today:hover i{background:#b97c3e}
+.chart .bar:hover{background:rgba(107,74,50,.05)}
+.chart .bar .x{position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chart .bar.today .x{color:var(--ink);font-weight:700}
+@media (prefers-reduced-motion:reduce){.chart .bar i{transition:none}}
+/* Lưới ô nhập: nhãn ở trên, ô thẳng hàng */
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 14px;align-items:end;margin:12px 0}
+.fields>label{margin:0;font-size:14px;font-weight:500}
+.fields>label.wide{grid-column:span 2}
+.fields>label input,.fields>label select{width:100%;margin-top:6px;font-weight:400}
+.fields .pair{margin-top:6px}.fields .pair input{margin:0;flex:1;min-width:0}
+.fields .opt{font-weight:400;color:var(--muted);font-size:12px;margin-left:4px}
+.fields .act{display:flex;gap:8px;align-items:end}
+.fields .act button{width:100%}
+.fields label.toggle{min-height:44px;align-self:end;font-size:14px}
+.fields .hint{font-weight:400}
+@media (max-width:640px){.fields{grid-template-columns:1fr 1fr;gap:10px}.fields>label.wide,.fields .act{grid-column:1/-1}}
+fieldset.measures{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;padding:6px 14px 14px}
+fieldset.measures .span{grid-column:1/-1;margin:0}
+fieldset.measures label{margin:0;font-size:14px;font-weight:500}
+@media (max-width:640px){fieldset.measures{grid-template-columns:1fr 1fr}}
+/* Dòng công thức */
+.rhead,.rline{display:grid;grid-template-columns:minmax(0,1fr) 96px minmax(150px,200px) 44px;gap:8px;align-items:start}
+.rhead{font-size:12px;color:var(--muted);font-weight:600;margin:12px 0 4px}
+.rline{margin:0 0 8px}.rline input,.rline select{margin:0;width:100%}
+.rline .howc{display:block}.rline .conv{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.rline .conv:empty{display:none}
+button.add{margin-top:2px}
+.savebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.savebar button{min-width:170px}
+@media (max-width:640px){
+  .rhead{display:none}
+  .rline{grid-template-columns:84px minmax(0,1fr) 44px;border-bottom:1px solid var(--line);padding-bottom:8px}
+  .rline select[name=ing]{grid-column:1/-1}
+  .savebar button{width:100%}
+}
+.drop.slim{min-height:60px;max-width:420px;margin:10px 0}
+/* Bảng nhiều cột trên điện thoại: mỗi dòng thành thẻ */
+@media (max-width:640px){
+  table.stack thead{display:none}
+  table.stack tr{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  table.stack td{border:0;padding:2px 0;text-align:left}
+  table.stack td:first-child{grid-column:1/-1;font-weight:600}
+  table.stack td[data-label]:not(:first-child)::before{content:attr(data-label);display:block;font-size:11px;color:var(--muted)}
+  table.stack td[data-label=""]::before{content:none}
+  .kbd-only{display:none}
+}
+.pair input{margin:0}
+.fields>label.check{display:inline-flex;flex-direction:row;align-items:center;gap:10px;font-weight:500;padding-bottom:10px}
+.fields>label.check input{width:20px;height:20px;margin:0}
+.fields .pair select{width:auto;flex:0 0 78px;margin:0}
+.fields .pair input{width:auto}
+.fields>label.check{white-space:nowrap}

@@ -10,11 +10,18 @@ import { SupabaseInventoryStore, PURCHASE_UNITS, MEASURES, measureSize, MOVE_LAB
 const OWN_KEY = 'the-khe-ops-session';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const vnd = (n) => `${new Intl.NumberFormat('vi-VN').format(n)}đ`;
+const vnd = (n) => `${new Intl.NumberFormat('vi-VN').format(Number(n) || 0)}đ`; // Number(-0)||0 = 0, hết "-0đ"
 const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400e3).toISOString().slice(0, 10);
 const fmtDate = (iso) => new Date(Date.parse(iso) + 7 * 3600e3).toISOString().slice(0, 10);
-const fmtTime = (iso) => (iso ? new Date(iso).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'chưa có');
+// "09:05 17/11" trong năm nay, thêm năm nếu khác năm (giờ Việt Nam).
+const fmtTime = (iso) => {
+  if (!iso) return 'chưa có';
+  const t = new Date(Date.parse(iso) + 7 * 3600e3).toISOString();
+  return `${t.slice(11, 16)} ${t.slice(8, 10)}/${t.slice(5, 7)}${t.slice(0, 4) === today().slice(0, 4) ? '' : `/${t.slice(0, 4)}`}`;
+};
+const dm = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+const spanText = (from, toExcl) => { const to = addDays(toExcl, -1); return from === to ? `${dm(from)}/${from.slice(0, 4)}` : `${dm(from)} - ${dm(to)}/${to.slice(0, 4)}`; };
 
 const client = new SupabaseClient({ url: SUPABASE_URL, key: SUPABASE_KEY });
 const store = new SupabaseSettlementStore(client);
@@ -67,10 +74,21 @@ function currentRange() {
 
 document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
   quick = b.dataset.q;
-  document.querySelectorAll('.seg button').forEach((x) => x.classList.toggle('on', x === b));
+  markSeg();
   load();
 }));
-$('month').addEventListener('change', () => { quick = 'month'; document.querySelectorAll('.seg button').forEach((x) => x.classList.toggle('on', x.dataset.q === 'month')); load(); });
+function markSeg() {
+  document.querySelectorAll('.seg button').forEach((x) => { x.classList.toggle('on', x.dataset.q === quick); x.setAttribute('aria-pressed', String(x.dataset.q === quick)); });
+}
+function fillMonths() {
+  const [y, m] = today().split('-').map(Number);
+  $('month').innerHTML = Array.from({ length: 24 }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - 1 - i, 1));
+    const v = d.toISOString().slice(0, 7);
+    return `<option value="${v}">Tháng ${d.getUTCMonth() + 1}/${d.getUTCFullYear()}</option>`;
+  }).join('');
+}
+$('month').addEventListener('change', () => { quick = 'month'; markSeg(); load(); });
 $('reload').addEventListener('click', load);
 const typing = (t) => ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName) || t.isContentEditable;
 document.addEventListener('keydown', (e) => {
@@ -83,6 +101,7 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- Ticket 7: danh mục bên trái, mỗi mục một địa chỉ #... (nút Back dùng được) ----------
 const VIEWS = [...document.querySelectorAll('.view')].map((v) => v.dataset.view);
+const PERIOD_VIEWS = new Set(['tong-quan', 'kho', 'chi-phi', 'doi-soat']);
 const currentView = () => (VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : VIEWS[0]);
 
 function showView(moveFocus) {
@@ -92,6 +111,8 @@ function showView(moveFocus) {
     if (a.dataset.nav === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
   document.title = `${$(`h-${v}`).textContent} · THE KHE`;
+  // Thanh chọn kỳ chỉ hiện ở mục có số theo kỳ.
+  $('filters').hidden = !PERIOD_VIEWS.has(v);
   $('invMsg').innerHTML = '';
   setNav(false);
   if (moveFocus) { window.scrollTo(0, 0); $(`h-${v}`).focus({ preventScroll: true }); }
@@ -149,10 +170,42 @@ function delta(v, label) {
 }
 
 const table = (head, rows) => rows.length
-  ? `<table><thead><tr>${head.map(([h, n]) => `<th class="${n ? 'n' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${head[i][1] ? 'n' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+  ? `<table class="${head.length >= 5 ? 'stack' : ''}"><thead><tr>${head.map(([h, n]) => `<th class="${n ? 'n' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${head[i][1] ? 'n' : ''}" data-label="${esc(String(head[i][0]).replace(/<[^>]*>/g, ''))}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`
   : '<p class="muted">Không có dữ liệu.</p>';
 
 const KIND = { data: 'Dữ liệu lệch', refund: 'Kiểm hoàn tiền', unpaid: 'Chưa thu', stale: 'Đơn treo', no_cost: 'Thiếu giá vốn' };
+
+// Biểu đồ cột doanh thu theo ngày: có trục, vạch lưới, nhãn ngày, chạm/di chuột để xem số.
+const short = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}tr` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
+function niceMax(v) {
+  if (v <= 0) return 100000;
+  const p = 10 ** Math.floor(Math.log10(v));
+  return [1, 2, 2.5, 5, 10].map((m) => m * p).find((x) => x >= v);
+}
+let dayData = [];
+function renderDays(days) {
+  dayData = days;
+  if (!days.length) { $('days').innerHTML = '<p class="muted">Chưa có ngày nào.</p>'; $('dayReadout').textContent = ''; return; }
+  const top = niceMax(Math.max(...days.map((x) => x.revenue)));
+  const t = today();
+  const every = days.length > 16 ? Math.ceil(days.length / 8) : 1;
+  const grid = [1, 0.5, 0].map((f) => `<div class="g" style="bottom:${f * 100}%"><span>${f ? short(top * f) : '0'}</span></div>`).join('');
+  const bars = days.map((x, i) => `<button type="button" class="bar${x.date === t ? ' today' : ''}${x.revenue ? '' : ' zero'}" data-i="${i}"
+    aria-label="${dm(x.date)}: ${vnd(x.revenue)}, ${x.orders} đơn"><i style="height:${(x.revenue / top) * 100}%"></i>
+    <span class="x">${x.date === t || (i % every === 0 && days[i + 1]?.date !== t) ? Number(x.date.slice(8)) : ''}</span></button>`).join('');
+  $('days').innerHTML = `<div class="plot">${grid}<div class="cols">${bars}</div></div>`;
+  const best = days.reduce((a, x, i) => (x.revenue > days[a].revenue ? i : a), 0);
+  showDay(best, true);
+}
+function showDay(i, isBest = false) {
+  const x = dayData[i]; if (!x) return;
+  for (const b of $('days').querySelectorAll('.bar')) b.classList.toggle('sel', Number(b.dataset.i) === i);
+  const total = dayData.reduce((s, y) => s + y.revenue, 0);
+  $('dayReadout').innerHTML = `<b>${dm(x.date)}${x.date === today() ? ' (hôm nay)' : ''}</b> · ${vnd(x.revenue)} · ${x.orders} đơn${isBest ? ' <span class="muted">(ngày cao nhất)</span>' : ''}<span class="muted"> · cả kỳ ${vnd(total)}, TB ${vnd(Math.round(total / dayData.length))}/ngày</span>`;
+}
+$('days').addEventListener('click', (e) => { const b = e.target.closest('.bar'); if (b) showDay(Number(b.dataset.i)); });
+$('days').addEventListener('mouseover', (e) => { const b = e.target.closest('.bar'); if (b) showDay(Number(b.dataset.i)); });
+$('days').addEventListener('focusin', (e) => { const b = e.target.closest('.bar'); if (b) showDay(Number(b.dataset.i)); });
 
 function render(d, settings) {
   $('login').hidden = true;
@@ -160,26 +213,30 @@ function render(d, settings) {
   $('navToggle').hidden = false;
   $('logout').hidden = false;
   const cmp = d.previousRange.partial ? `cùng ${d.days.length} ngày kỳ trước` : 'kỳ trước';
-  $('meta').textContent = `${settings?.shop_name || 'THE KHE'} · ${d.range.from} đến ${addDays(d.range.to, -1)} · so với ${d.previousRange.from} đến ${addDays(d.previousRange.to, -1)} · đọc lúc ${fmtTime(d.syncedAt)} · đơn cập nhật gần nhất ${fmtTime(d.lastOrderAt)}`;
+  $('meta').textContent = `${spanText(d.range.from, d.range.to)} · so với ${spanText(d.previousRange.from, d.previousRange.to)} · đọc lúc ${fmtTime(d.syncedAt)} · đơn mới nhất ${fmtTime(d.lastOrderAt)}`;
+  $('meta').title = settings?.shop_name || 'THE KHE';
   $('warnings').innerHTML = d.warnings.map((w) => `<div class="warn ${d.sourceStatus !== 'ok' && w.startsWith('Nguồn') ? 'bad' : ''}">${esc(w)}</div>`).join('');
   const k = d.kpi;
   const est = (on) => (on ? '<span class="tag">ước tính</span>' : '');
-  const cards = [
+  const hero = [
     ['Doanh thu ghi nhận', vnd(k.revenue), delta(d.change.revenue, cmp)],
-    ['Số đơn hoàn tất', k.orders, delta(d.change.orders, cmp)],
-    ['Giá trị TB/đơn', vnd(k.avgTicket), delta(d.change.avgTicket, cmp)],
     ['Lãi gộp (sau giá vốn)', vnd(k.grossProfit), delta(d.change.grossProfit, cmp)],
+    [`Lãi ròng quản trị${est(!d.complete || d.estimated)}`, vnd(k.netProfit), d.complete ? '<span class="muted small">sau chi phí</span>' : '<span class="muted small">chi phí kỳ chưa nhập đủ</span>'],
+    ['Số đơn hoàn tất', k.orders, delta(d.change.orders, cmp)],
+  ];
+  const minor = [
+    ['Giá trị TB/đơn', vnd(k.avgTicket), delta(d.change.avgTicket, cmp)],
     [`Lãi đóng góp${est(k.grabRevenue > 0)}`, vnd(k.contribution), '<span class="muted small">sau phí Grab</span>'],
-    ['Chi phí đã nhập', vnd(k.expenses), d.complete ? '' : '<span class="muted small">kỳ chưa nhập đủ</span>'],
-    [`Lãi ròng quản trị${est(!d.complete || d.estimated)}`, vnd(k.netProfit), ''],
+    ['Chi phí đã nhập', vnd(k.expenses), ''],
     ['Tiền về tại quầy', vnd(k.cashIn.cash + k.cashIn.transfer), `<span class="muted small">TM ${vnd(k.cashIn.cash)} · CK ${vnd(k.cashIn.transfer)}</span>`],
     [`Grab còn phải trả${est(k.grabRevenue > 0)}`, vnd(k.grabReceivableEstimate), ''],
     ['Giảm giá đã cho', vnd(k.discounts), ''],
   ];
-  $('kpis').innerHTML = cards.map(([l, v, s]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s}</div>`).join('');
+  const kpiHtml = (cards) => cards.map(([l, v, s]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s}</div>`).join('');
+  $('kpis').innerHTML = kpiHtml(hero);
+  $('kpis2').innerHTML = kpiHtml(minor);
 
-  const max = Math.max(1, ...d.days.map((x) => x.revenue));
-  $('days').innerHTML = d.days.map((x) => `<div style="height:${Math.round((x.revenue / max) * 100)}%" title="${x.date}: ${vnd(x.revenue)}, ${x.orders} đơn"></div>`).join('') || '<p class="muted">Chưa có ngày nào.</p>';
+  renderDays(d.days);
 
   $('channels').innerHTML = table([['Kênh'], ['Đơn', 1], ['Doanh thu', 1], ['Lãi gộp', 1]],
     d.channels.map((c) => [esc(c.label), c.orders, vnd(c.revenue), vnd(c.revenue - c.cost)]));
@@ -191,8 +248,12 @@ function render(d, settings) {
 
   const itemRows = (xs) => xs.map((i) => [esc(i.name), i.qty, vnd(i.listRevenue), vnd(i.margin)]);
   const head = [['Món'], ['SL', 1], ['Doanh thu', 1], ['Lãi gộp', 1]];
-  $('topItems').innerHTML = table(head, itemRows(d.items.slice(0, 8)));
-  $('lowItems').innerHTML = table(head, itemRows(d.items.slice(-8).reverse().filter((i) => !d.items.slice(0, 8).includes(i))));
+  // Chia đôi danh sách đã xếp theo lãi: nửa trên là bán chạy, phần còn lại (đảo ngược) là lãi thấp.
+  const nTop = Math.min(5, Math.ceil(d.items.length / 2));
+  $('topItems').innerHTML = table(head, itemRows(d.items.slice(0, nTop)));
+  $('lowItems').innerHTML = d.items.length > nTop
+    ? table(head, itemRows(d.items.slice(nTop).reverse().slice(0, 5)))
+    : '<p class="muted">Chưa đủ món để so sánh.</p>';
 
   $('expenses').innerHTML = d.expenseByCategory.length
     ? table([['Nhóm'], ['Số khoản', 1], ['Tổng', 1]], d.expenseByCategory.map((e) => [esc(e.category), e.count, vnd(e.amount)]))
@@ -547,10 +608,10 @@ const numText = (n) => (n == null ? '' : String(Number(n)).replace('.', ','));
 function recipeLine(line = {}) {
   const active = inv.levels.filter((l) => l.active || l.ingredient_id === line.ingredientId);
   const how = [{ value: '', label: 'theo cân/đong' }, ...Object.entries(MEASURES).map(([value, label]) => ({ value, label }))];
-  return `<div class="row rline"><select name="ing" aria-label="Nguyên liệu"><option value="">Chọn nguyên liệu</option>${options(active.map((l) => ({ value: l.ingredient_id, label: `${l.name} (${l.unit})` })), line.ingredientId)}</select>`
-    + `<input name="qty" inputmode="decimal" placeholder="Số lượng" aria-label="Số lượng" value="${numText(line.measure ? line.measureCount : line.qty)}" style="max-width:110px">`
-    + `<select name="how" aria-label="Đong bằng">${options(how, line.measure ?? '')}</select><span class="conv" aria-live="polite"></span>`
-    + '<button type="button" class="ghost rm" aria-label="Bỏ dòng">Bỏ</button></div>';
+  return `<div class="rline"><select name="ing" aria-label="Nguyên liệu"><option value="">Chọn nguyên liệu</option>${options(active.map((l) => ({ value: l.ingredient_id, label: `${l.name} (${l.unit})` })), line.ingredientId)}</select>`
+    + `<input name="qty" inputmode="decimal" placeholder="Lượng" aria-label="Lượng" value="${numText(line.measure ? line.measureCount : line.qty)}">`
+    + `<span class="howc"><select name="how" aria-label="Đong bằng">${options(how, line.measure ?? '')}</select><span class="conv" aria-live="polite"></span></span>`
+    + '<button type="button" class="icon rm" aria-label="Bỏ dòng" title="Bỏ dòng"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
 }
 
 // Đơn vị hiện cạnh ô số và lượng quy đổi khi đong bằng muỗng/vợt.
@@ -696,7 +757,7 @@ function fillIngForm(id) {
 }
 function syncIngUnit() {
   const f = $('ingForm').elements;
-  $('ingForm').querySelector('.mu').textContent = f.unit.value;
+  for (const el of $('ingForm').querySelectorAll('.mu, .mu2')) el.textContent = f.unit.value;
   const fake = { unit: f.unit.value, measures: {} };
   for (const m of Object.keys(MEASURES)) f[`m_${m}`].placeholder = numText(measureSize(fake, m));
 }
@@ -740,7 +801,7 @@ $('recipeForm').elements.product.addEventListener('change', fillRecipe);
 $('recipeForm').elements.from.addEventListener('change', fillRecipe);
 $('recipeRows').addEventListener('input', () => { syncRecipeRows(); updateRecipeCost(); });
 $('recipeRows').addEventListener('change', () => { syncRecipeRows(); updateRecipeCost(); });
-$('recipeRows').addEventListener('click', (e) => { if (e.target.classList.contains('rm')) { e.target.closest('.rline').remove(); updateRecipeCost(); } });
+$('recipeRows').addEventListener('click', (e) => { if (e.target.closest('.rm')) { e.target.closest('.rline').remove(); updateRecipeCost(); } });
 $('addLine').addEventListener('click', () => {
   $('recipeRows').insertAdjacentHTML('beforeend', recipeLine());
   $('recipeRows').lastElementChild.querySelector('select').focus();
@@ -785,5 +846,6 @@ function start() {
   load();
 }
 
+fillMonths();
 $('month').value = today().slice(0, 7);
 start();
