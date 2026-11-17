@@ -3,6 +3,7 @@ import { SupabaseClient, SupabaseOrderReader, readSupabaseOrders, readExpenses, 
 import { buildOwnerDashboard, monthRange, rangeToIso } from './lib/owner-dashboard.js';
 import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js';
 import { buildReconcileReport } from './lib/reconcile-report.js';
+import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js';
 
 const OWN_KEY = 'the-khe-ops-session';
 const $ = (id) => document.getElementById(id);
@@ -10,10 +11,13 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const vnd = (n) => `${new Intl.NumberFormat('vi-VN').format(n)}đ`;
 const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400e3).toISOString().slice(0, 10);
+const fmtDate = (iso) => new Date(Date.parse(iso) + 7 * 3600e3).toISOString().slice(0, 10);
 const fmtTime = (iso) => (iso ? new Date(iso).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'chưa có');
 
 const client = new SupabaseClient({ url: SUPABASE_URL, key: SUPABASE_KEY });
 const store = new SupabaseSettlementStore(client);
+const shifts = new SupabaseShiftStore(client);
+let shiftState = { startDate: null, open: null, moves: [], recent: [] };
 let quick = 'month';
 
 // Phiên: ưu tiên phiên riêng của màn này; nếu chưa có thì mượn access token còn hạn của
@@ -83,6 +87,7 @@ async function load() {
     });
     render(d, settings);
     $('status').textContent = '';
+    await loadShift();
     loadLedger();
   } catch (err) {
     if (/đăng nhập/i.test(err.message)) return showLogin(err.message);
@@ -171,13 +176,19 @@ async function loadLedger() {
       readSupabaseOrders(new SupabaseOrderReader(client, rangeToIso({ from: '2024-01-01', to: end }))),
     ]);
     const close = ledger.closes.find((c) => c.period === p);
+    const start = shiftState.startDate;
+    const kept = applyStartDate({ orders: ordersForReconcile(src.orders), lines: ledger.lines }, start);
+    const openMonth = shiftState.open ? fmtDate(shiftState.open.opened_at).slice(0, 7) : null;
     const live = buildReconcileReport({
       period: p,
-      orderSync: { ...src, orders: ordersForReconcile(src.orders), source: 'supabase:orders' },
-      lines: ledger.lines,
+      orderSync: { ...src, orders: kept.orders, source: 'supabase:orders' },
+      lines: kept.lines,
       pendingRevisionCount: ledger.pending.length,
       locked: close?.status === 'locked',
+      openShift: openMonth != null && openMonth <= p,
+      beforeStart: start != null && p < start.slice(0, 7),
     });
+    if (start) live.startDate = start;
     ledgerReport = live;
     renderLedger(live, close, ledger);
   } catch (err) {
@@ -198,6 +209,7 @@ function renderLedger(live, close, ledger) {
     for (const w of live.warnings) notes.push(`<div class="warn">${esc(w)}</div>`);
     if (live.closeable) notes.push('<div class="ok">Đủ điều kiện chốt kỳ.</div>');
   }
+  if (!locked && live.startDate) notes.unshift(`<div class="muted small">Sổ tính từ ${esc(live.startDate)}; dữ liệu trước ngày này bị bỏ qua.</div>`);
   $('ledgerStatus').innerHTML = notes.join('');
   const est = (on) => (on ? '<span class="tag">ước tính</span>' : '');
   $('ledgerKpis').innerHTML = [
@@ -294,6 +306,103 @@ $('reopenBtn').addEventListener('click', () => {
   const reason = prompt(`Lý do mở lại kỳ ${period()} (bắt buộc):`);
   if (reason == null) return;
   ledgerAction(() => store.reopenPeriod(period(), reason), `Đã mở lại kỳ ${esc(period())}.`);
+});
+
+// ===== Ticket 4: ca và tiền mặt tại két (ghi qua RPC ops_*) =====
+async function loadShift() {
+  try {
+    shiftState = await shifts.load();
+    let orders = [];
+    if (shiftState.open) {
+      const from = fmtDate(shiftState.open.opened_at);
+      const src = await readSupabaseOrders(new SupabaseOrderReader(client, rangeToIso({ from, to: addDays(today(), 1) })));
+      orders = src.orders;
+    }
+    renderShift(orders);
+  } catch (err) {
+    if (/đăng nhập/i.test(err.message)) return showLogin(err.message);
+    $('shiftStatus').innerHTML = `<div class="warn bad">Không đọc được ca: ${esc(err.message)}</div>`;
+  }
+}
+
+function renderShift(orders) {
+  const { open, moves, recent, startDate } = shiftState;
+  $('startDate').value = startDate ?? '';
+  $('shiftState').textContent = open ? 'đang mở' : 'chưa mở ca';
+  $('openShiftForm').hidden = !!open;
+  $('shiftOpen').hidden = !open;
+  $('shiftStatus').innerHTML = startDate ? '' : '<div class="warn">Chưa đặt ngày bắt đầu sổ. Đặt ở phần Đối soát bên dưới để bỏ qua dữ liệu cũ.</div>';
+  if (open) {
+    const p = shiftPreview({ shift: open, orders, moves });
+    $('shiftStatus').innerHTML += `<p class="muted small">Mở lúc ${fmtTime(open.opened_at)}${open.open_note ? ` · ${esc(open.open_note)}` : ''}. Số dự kiến là tạm tính; số chính thức do hệ thống tính lúc chốt ca.</p>`;
+    $('shiftKpis').innerHTML = [
+      ['Tiền đầu ca', vnd(p.openingCash)],
+      ['Bán tiền mặt', `${vnd(p.cashSales)}<div class="muted small">${p.cashSalesCount} đơn</div>`],
+      ['Nộp thêm', vnd(p.cashIn)],
+      ['Chi và rút', vnd(p.cashOut)],
+      ['Két dự kiến', `<b>${vnd(p.expectedCash)}</b>`],
+      ['Đơn chưa thu', p.unpaidCount ? `<span class="down">${p.unpaidCount}</span>` : '0'],
+    ].map(([l, v]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
+    $('moves').innerHTML = moves.length
+      ? table([['Lúc'], ['Loại'], ['Nội dung'], ['Nhóm'], ['Tiền', 1]], moves.map((m) => [fmtTime(m.created_at), MOVE_KIND[m.kind], esc(m.note), esc(m.category), (m.kind === 'deposit' ? '+' : '-') + vnd(m.amount)]))
+      : '<p class="muted small">Chưa có khoản chi, rút hay nộp nào trong ca.</p>';
+    $('closeShiftForm').dataset.expected = p.expectedCash;
+  }
+  $('shiftHistory').innerHTML = recent.length
+    ? table([['Mở'], ['Chốt'], ['Đầu ca', 1], ['Bán TM', 1], ['Dự kiến', 1], ['Đếm được', 1], ['Lệch', 1], ['Ghi chú']],
+      recent.map((x) => [fmtTime(x.opened_at), fmtTime(x.closed_at), vnd(x.opening_cash), vnd(x.cash_sales), vnd(x.expected_cash), vnd(x.counted_cash),
+        `<span class="${x.variance ? 'down' : ''}">${vnd(x.variance)}</span>`, esc(x.close_note)]))
+    : '<p class="muted">Chưa có ca nào đã chốt.</p>';
+}
+
+async function shiftAction(fn, okMsg) {
+  try {
+    const msg = await fn();
+    $('shiftMsg').innerHTML = `<div class="ok">${esc(okMsg ?? msg)}</div>`;
+  } catch (err) {
+    $('shiftMsg').innerHTML = `<div class="warn bad">${esc(err.message)}</div>`;
+  }
+  await loadShift();
+  loadLedger();
+}
+
+$('openShiftForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const cash = parseVndInput(f.get('cash'));
+  if (cash == null) { $('shiftMsg').innerHTML = '<div class="warn bad">Tiền đầu ca phải là số, vd 500000.</div>'; return; }
+  shiftAction(() => shifts.openShift(cash, f.get('note')), `Đã mở ca với ${vnd(cash)} đầu ca.`).then(() => e.target.reset());
+});
+
+$('moveForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const amount = parseVndInput(f.get('amount'));
+  if (!amount) { $('shiftMsg').innerHTML = '<div class="warn bad">Số tiền phải lớn hơn 0.</div>'; return; }
+  const kind = f.get('kind');
+  const move = { kind, amount, note: f.get('note'), category: f.get('category') || 'Khác' };
+  const extra = kind === 'expense' ? ', đã ghi vào chi phí của quán' : '';
+  shiftAction(() => shifts.addMove(shiftState.open.id, move), `Đã ghi ${MOVE_KIND[kind].toLowerCase()} ${vnd(amount)}${extra}.`).then(() => e.target.reset());
+});
+
+$('closeShiftForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const counted = parseVndInput(f.get('counted'));
+  if (counted == null) { $('shiftMsg').innerHTML = '<div class="warn bad">Tiền đếm được phải là số.</div>'; return; }
+  const diff = counted - Number(e.target.dataset.expected);
+  const warnDiff = diff ? ` Đang lệch khoảng ${vnd(diff)} so với tạm tính.` : '';
+  if (!confirm(`Chốt ca với ${vnd(counted)} trong két?${warnDiff} Sau khi chốt không ghi thêm vào ca này được.`)) return;
+  shiftAction(async () => {
+    const r = await shifts.closeShift(shiftState.open.id, counted, f.get('note'));
+    return `Đã chốt ca. Dự kiến ${vnd(r.expected_cash)}, đếm được ${vnd(r.counted_cash)}, lệch ${vnd(r.variance)}.`;
+  }).then(() => e.target.reset());
+});
+
+$('saveStartDate').addEventListener('click', () => {
+  const d = $('startDate').value;
+  if (!d) { $('grabPreview').innerHTML = '<div class="warn bad">Chọn ngày bắt đầu sổ trước.</div>'; return; }
+  shiftAction(() => shifts.setStartDate(d), `Đã đặt ngày bắt đầu sổ ${d}.`);
 });
 
 function start() {
