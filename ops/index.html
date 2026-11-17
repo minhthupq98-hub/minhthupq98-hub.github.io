@@ -19,7 +19,7 @@
 <main>
   <section id="login" class="card narrow" hidden>
     <h1>Đăng nhập</h1>
-    <p class="muted">Dùng đúng tài khoản admin. Màn này không sửa đơn hay món; chỉ ghi ca, tiền két, chi phí từ két và sổ đối soát.</p>
+    <p class="muted">Dùng đúng tài khoản admin. Màn này không sửa đơn hay món; chỉ ghi ca, tiền két, chi phí từ két, kho, công thức món và sổ đối soát.</p>
     <form id="loginForm">
       <label>Email <input name="email" type="email" autocomplete="username" required></label>
       <label>Mật khẩu <input name="password" type="password" autocomplete="current-password" required></label>
@@ -68,6 +68,54 @@
       </div>
       <p id="shiftMsg"></p>
       <details><summary>Các ca gần đây</summary><div id="shiftHistory"></div></details>
+    </section>
+    <section class="card" id="inventory">
+      <h2>Kho và giá vốn <span id="invState" class="pill"></span></h2>
+      <p class="muted small">Đơn hoàn tất được trừ kho theo công thức món tại ngày bán; đơn hủy được hoàn kho. Nhập hàng chỉ cập nhật tồn và giá bình quân, không ghi vào Chi phí để giá vốn không bị tính hai lần.</p>
+      <div id="invWarn"></div>
+      <div id="invKpis" class="kpis"></div>
+      <div id="invStock"></div>
+      <p id="invMsg"></p>
+      <form id="purchaseForm" class="row">
+        <select name="ingredient" aria-label="Nguyên liệu nhập" required></select>
+        <input name="qty" inputmode="decimal" placeholder="Số lượng" aria-label="Số lượng" required>
+        <select name="unit" aria-label="Đơn vị nhập"></select>
+        <input name="total" inputmode="numeric" placeholder="Tổng tiền" aria-label="Tổng tiền" required>
+        <input name="supplier" maxlength="80" placeholder="Nhà cung cấp" aria-label="Nhà cung cấp">
+        <button type="submit">Nhập hàng</button>
+      </form>
+      <form id="wasteForm" class="row">
+        <select name="ingredient" aria-label="Nguyên liệu hủy" required></select>
+        <input name="qty" inputmode="decimal" placeholder="Số lượng hủy" aria-label="Số lượng hủy" required>
+        <input name="reason" maxlength="200" placeholder="Lý do, vd sữa hết hạn" aria-label="Lý do" required>
+        <button type="submit" class="ghost">Ghi hủy</button>
+      </form>
+      <details><summary>Kiểm kê</summary>
+        <p class="muted small">Nhập số đếm thực tế, để trống nguyên liệu không đếm. Lệch so với sổ phải ghi lý do.</p>
+        <form id="countForm"><div id="countRows"></div>
+          <div class="row"><input name="note" maxlength="200" placeholder="Ghi chú/lý do lệch" aria-label="Ghi chú kiểm kê"><button type="submit">Ghi kiểm kê</button></div>
+        </form>
+      </details>
+      <details><summary>Nguyên liệu</summary>
+        <form id="ingForm" class="row">
+          <select name="id" aria-label="Sửa nguyên liệu"><option value="">+ Nguyên liệu mới</option></select>
+          <input name="name" maxlength="80" placeholder="Tên, vd Sữa tươi" aria-label="Tên nguyên liệu" required>
+          <select name="unit" aria-label="Đơn vị gốc"><option value="g">g</option><option value="ml">ml</option><option value="cái">cái</option></select>
+          <input name="low" inputmode="decimal" placeholder="Báo khi tồn dưới" aria-label="Mức cảnh báo">
+          <label class="small"><input name="active" type="checkbox" checked style="display:inline;width:auto;min-height:0"> đang dùng</label>
+          <button type="submit">Lưu</button>
+        </form>
+      </details>
+      <details><summary>Công thức món</summary>
+        <p class="muted small">Định lượng theo đơn vị gốc cho 1 món (hoặc 1 phần extra). Lưu với ngày hiệu lực mới để giữ công thức cũ cho đơn đã bán. Lưu không dòng nào nghĩa là món không trừ kho.</p>
+        <form id="recipeForm">
+          <div class="row"><select name="product" aria-label="Món" required></select><label>Hiệu lực từ <input name="from" type="date" required></label></div>
+          <div id="recipeRows"></div>
+          <div class="row"><button type="button" id="addLine" class="ghost">+ Dòng</button><button type="submit">Lưu công thức</button><span id="recipeCost" class="muted small"></span></div>
+        </form>
+      </details>
+      <details><summary>Giá vốn theo công thức</summary><div id="menuCost"></div></details>
+      <details><summary>Giao dịch kho trong kỳ</summary><div id="invMoves"></div></details>
     </section>
     <div class="grid2">
       <section class="card"><h2>Doanh thu theo ngày</h2><div id="days" class="bars"></div></section>
