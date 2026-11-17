@@ -1,0 +1,35 @@
+name: Order cup notes
+on:
+  pull_request:
+    paths:
+      - 'assets/order-cups-v1.*'
+      - 'assets/staff-cup-notes-v1.js'
+      - 'scripts/build-cup-notes.mjs'
+      - 'test/cup-notes*'
+      - 'package.json'
+      - 'index.html'
+      - '.github/workflows/order-cup-notes.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'assets/order-cups-v1.*'
+      - 'assets/staff-cup-notes-v1.js'
+      - 'scripts/build-cup-notes.mjs'
+      - 'test/cup-notes*'
+      - 'package.json'
+      - 'index.html'
+      - '.github/workflows/order-cup-notes.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - run: npm run build
+      - run: node --check assets/staff-cup-notes-v1.js && node --check assets/order-cups-v1.js
+      - run: git diff --exit-code -- assets/staff-cup-notes-v1.js index.html

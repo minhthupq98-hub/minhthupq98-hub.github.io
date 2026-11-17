@@ -30,10 +30,14 @@
           uxStylesheet.rel = "stylesheet";
           uxStylesheet.href = "/assets/admin-ux.css?v=502ebbb";
           document.head.appendChild(uxStylesheet);
+          var cupStylesheet = document.createElement("link");
+          cupStylesheet.rel = "stylesheet";
+          cupStylesheet.href = "/assets/order-cups-v1.css";
+          document.head.appendChild(cupStylesheet);
           var staffApp = document.createElement("script");
           staffApp.type = "module";
           staffApp.crossOrigin = "anonymous";
-          staffApp.src = "/assets/index-BpABOaN7.js";
+          staffApp.src = "/assets/staff-cup-notes-v1.js";
           document.head.appendChild(staffApp);
         }
         if (document.readyState === "loading") {

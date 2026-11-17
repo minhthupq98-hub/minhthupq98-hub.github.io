@@ -1,0 +1,11 @@
+{
+  "name": "the-khe-order-cup-notes",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-cup-notes.mjs",
+    "test": "node --test test/cup-notes.test.mjs"
+  },
+  "engines": { "node": ">=20" }
+}
