@@ -1,7 +1,7 @@
 // Trợ lý nhập kho (ticket 6): quét hóa đơn / nhập tay / nhập sổ công thức.
 // Mọi thứ là BẢN NHÁP trong trình duyệt cho tới khi chủ quán bấm Ghi; ghi qua
 // ops_purchase_batch hoặc ops_import_recipes, mỗi lần là một giao dịch.
-import { PURCHASE_UNITS, parseQtyInput } from './lib/inventory.js';
+import { PURCHASE_UNITS, MEASURES, parseQtyInput } from './lib/inventory.js';
 import { parseVndInput } from './lib/shift-store.js';
 import { docxToLines } from './lib/docx-text.js';
 import {
@@ -443,7 +443,7 @@ function recipeBlock(r, j, nIssues, prods) {
           <td data-label="Nguyên liệu">${esc(e.name)}${l.via ? `<span class="hint">qua ${esc(l.via)}</span>` : ''}</td>
           <td data-label="Sổ ghi">${esc(l.rawQty)}</td>
           <td data-label="Lượng" class="n"><div class="pair"><input data-key="r${j}-${k}" data-r="${j}" data-k="${k}" data-f="qty" value="${l.qty != null ? String(l.qty).replace('.', ',') : ''}" inputmode="decimal" aria-label="Lượng ${esc(e.name)} cho ${esc(r.title)}"${need ? ' aria-invalid="true"' : ''}${dead ? ' disabled' : ''}><span class="unit">${esc(e.unit)}</span></div></td>
-          <td data-label="Ghi chú">${l.flags.filter((f) => f !== 'unit_conflict').map((f) => `<span class="tag">${esc(flagText(f))}</span>`).join('')}
+          <td data-label="Ghi chú">${l.measure ? `<span class="tag good">${esc(String(l.measureCount).replace('.', ','))} ${esc(MEASURES[l.measure])}</span>` : ''}${l.flags.filter((f) => f !== 'unit_conflict').map((f) => `<span class="tag">${esc(flagText(f))}</span>`).join('')}
             ${conflict ? `<label class="check${l.confirmed ? '' : ' bad'}"><input type="checkbox" data-r="${j}" data-k="${k}" data-f="confirmed"${l.confirmed ? ' checked' : ''}> sổ ghi ${esc(l.unit)}, đúng là ${esc(e.unit)}</label>` : ''}</td>
           <td data-label="Bỏ"><label class="check"><input type="checkbox" data-r="${j}" data-k="${k}" data-f="skip"${l.skip ? ' checked' : ''} aria-label="Bỏ ${esc(e.name)} khỏi ${esc(r.title)}"></label></td>
         </tr>`;
@@ -459,6 +459,8 @@ function onBookInput(e) {
     const n = Number(t.value.trim().replace(',', '.'));
     l.qty = t.value.trim() && Number.isFinite(n) && n > 0 ? Math.round(n * 1000) / 1000 : null;
     if (l.qty != null) t.removeAttribute('aria-invalid');
+    // Gõ số cụ thể thì bỏ cách đong bằng muỗng/vợt của dòng này.
+    l.measure = null; l.measureCount = null; l.flags = l.flags.filter((f) => f !== 'estimated');
     return;
   }
   if (t.dataset.f === 'name') { book.ingredients[+t.dataset.g].name = t.value; }
