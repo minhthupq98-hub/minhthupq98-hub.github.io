@@ -4,6 +4,7 @@ import { buildOwnerDashboard, monthRange, rangeToIso } from './lib/owner-dashboa
 import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js';
 import { buildReconcileReport } from './lib/reconcile-report.js';
 import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js';
+import { initAssistant, refreshAssistant } from './assistant.js';
 import { SupabaseInventoryStore, PURCHASE_UNITS, MOVE_LABEL, parseQtyInput, weightedAvgCost, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js';
 
 const OWN_KEY = 'the-khe-ops-session';
@@ -420,6 +421,7 @@ async function loadInventory() {
     await inventory.sync();
     inv = await inventory.load(currentRange());
     renderInventory();
+    refreshAssistant();
   } catch (err) {
     $('invWarn').innerHTML = `<div class="warn bad">Không đọc được kho: ${esc(err.message)}</div>`;
   }
@@ -610,6 +612,17 @@ $('recipeForm').addEventListener('submit', (e) => {
     const extra = r?.completed ? ` Đã trừ bù kho cho ${r.completed} đơn bán trước đó.` : '';
     return (lines.length ? `Đã lưu công thức ${p?.name} từ ${f.from.value}, ${lines.length} nguyên liệu.` : `Đã đặt ${p?.name} không trừ kho từ ${f.from.value}.`) + extra;
   });
+});
+
+initAssistant({
+  inventory,
+  getInv: () => inv,
+  afterWrite: async () => {
+    await inventory.sync();
+    inv = await inventory.load(currentRange());
+    renderInventory();
+    await refreshAssistant();
+  },
 });
 
 function start() {
