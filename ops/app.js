@@ -5,7 +5,7 @@ import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './
 import { buildReconcileReport } from './lib/reconcile-report.js';
 import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js';
 import { initAssistant, refreshAssistant } from './assistant.js';
-import { SupabaseInventoryStore, PURCHASE_UNITS, MOVE_LABEL, parseQtyInput, weightedAvgCost, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js';
+import { SupabaseInventoryStore, PURCHASE_UNITS, MEASURES, measureSize, MOVE_LABEL, parseQtyInput, weightedAvgCost, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js';
 
 const OWN_KEY = 'the-khe-ops-session';
 const $ = (id) => document.getElementById(id);
@@ -38,6 +38,7 @@ function findSession() {
 
 function showLogin(msg = '') {
   $('app').hidden = true;
+  $('navToggle').hidden = true;
   $('logout').hidden = true;
   $('login').hidden = false;
   $('loginErr').textContent = msg;
@@ -71,7 +72,48 @@ document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('clic
 }));
 $('month').addEventListener('change', () => { quick = 'month'; document.querySelectorAll('.seg button').forEach((x) => x.classList.toggle('on', x.dataset.q === 'month')); load(); });
 $('reload').addEventListener('click', load);
-document.addEventListener('keydown', (e) => { if (e.key === 'r' && !e.metaKey && !e.ctrlKey && e.target.tagName !== 'INPUT') load(); });
+const typing = (t) => ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName) || t.isContentEditable;
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('sidenav').classList.contains('open')) { setNav(false); $('navToggle').focus(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || $('app').hidden) return;
+  if (e.key === 'r') load();
+  const n = Number(e.key);
+  if (n >= 1 && n <= VIEWS.length) location.hash = VIEWS[n - 1];
+});
+
+// ---------- Ticket 7: danh mục bên trái, mỗi mục một địa chỉ #... (nút Back dùng được) ----------
+const VIEWS = [...document.querySelectorAll('.view')].map((v) => v.dataset.view);
+const currentView = () => (VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : VIEWS[0]);
+
+function showView(moveFocus) {
+  const v = currentView();
+  for (const s of document.querySelectorAll('.view')) s.hidden = s.dataset.view !== v;
+  for (const a of document.querySelectorAll('[data-nav]')) {
+    if (a.dataset.nav === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  }
+  document.title = `${$(`h-${v}`).textContent} · THE KHE`;
+  $('invMsg').innerHTML = '';
+  setNav(false);
+  if (moveFocus) { window.scrollTo(0, 0); $(`h-${v}`).focus({ preventScroll: true }); }
+}
+
+function setNav(open) {
+  const nav = $('sidenav');
+  if (nav.classList.contains('open') === open) return;
+  nav.classList.toggle('open', open);
+  $('scrim').hidden = !open;
+  $('navToggle').setAttribute('aria-expanded', String(open));
+  $('navToggle').setAttribute('aria-label', open ? 'Đóng danh mục' : 'Mở danh mục');
+  if (open) nav.querySelector('[aria-current=page]')?.focus();
+}
+
+window.addEventListener('hashchange', () => { if (VIEWS.includes(location.hash.slice(1))) showView(true); });
+$('navToggle').addEventListener('click', () => setNav(!$('sidenav').classList.contains('open')));
+$('scrim').addEventListener('click', () => setNav(false));
+// Bấm lại đúng mục đang mở (hash không đổi) vẫn đóng ngăn kéo và đưa về đầu mục.
+$('sidenav').addEventListener('click', (e) => { const a = e.target.closest('[data-nav]'); if (a && a.dataset.nav === currentView()) { e.preventDefault(); showView(true); } });
+const badge = (view, text) => { $(`nb-${view}`).textContent = text ? String(text) : ''; };
+showView(false);
 
 async function load() {
   const range = currentRange();
@@ -115,6 +157,7 @@ const KIND = { data: 'Dữ liệu lệch', refund: 'Kiểm hoàn tiền', unpaid
 function render(d, settings) {
   $('login').hidden = true;
   $('app').hidden = false;
+  $('navToggle').hidden = false;
   $('logout').hidden = false;
   const cmp = d.previousRange.partial ? `cùng ${d.days.length} ngày kỳ trước` : 'kỳ trước';
   $('meta').textContent = `${settings?.shop_name || 'THE KHE'} · ${d.range.from} đến ${addDays(d.range.to, -1)} · so với ${d.previousRange.from} đến ${addDays(d.previousRange.to, -1)} · đọc lúc ${fmtTime(d.syncedAt)} · đơn cập nhật gần nhất ${fmtTime(d.lastOrderAt)}`;
@@ -142,6 +185,7 @@ function render(d, settings) {
     d.channels.map((c) => [esc(c.label), c.orders, vnd(c.revenue), vnd(c.revenue - c.cost)]));
 
   $('issueCount').textContent = d.issues.length;
+  badge('tong-quan', d.issues.length);
   const issueRows = d.issues.map((i) => [`#${esc(i.orderNumber)}`, esc(i.businessDate), esc(i.channel), `<b>${KIND[i.kind]}</b> ${esc(i.label)}`, vnd(i.amount)]);
   $('issues').innerHTML = d.issues.length ? table([['Đơn'], ['Ngày'], ['Kênh'], ['Vấn đề'], ['Tiền', 1]], issueRows) : '<p class="muted">Không có đơn lệch trong kỳ.</p>';
 
@@ -334,6 +378,7 @@ function renderShift(orders) {
   const { open, moves, recent, startDate } = shiftState;
   $('startDate').value = startDate ?? '';
   $('shiftState').textContent = open ? 'đang mở' : 'chưa mở ca';
+  badge('ca', open ? 'mở' : '');
   $('openShiftForm').hidden = !!open;
   $('shiftOpen').hidden = !open;
   $('shiftStatus').innerHTML = startDate ? '' : '<div class="warn">Chưa đặt ngày bắt đầu sổ. Đặt ở phần Đối soát bên dưới để bỏ qua dữ liệu cũ.</div>';
@@ -436,6 +481,8 @@ function renderInventory() {
   const missing = missingRecipes(postings);
   const low = stock.filter((x) => x.low || x.negative);
   $('invState').textContent = levels.length ? `${active.length} nguyên liệu` : 'chưa có nguyên liệu';
+  badge('kho', low.length);
+  badge('cong-thuc', missing.length);
   const warns = [];
   if (!levels.length) warns.push('<div class="warn">Chưa có nguyên liệu. Mở "Nguyên liệu" để thêm, sau đó nhập công thức món và nhập hàng đầu kỳ.</div>');
   if (missing.length) warns.push(`<div class="warn">Món đã bán chưa có công thức nên chưa trừ kho: ${missing.slice(0, 8).map((m) => `${esc(m.name)} (${m.orders} đơn)`).join(', ')}${missing.length > 8 ? ', ...' : ''}. Nhập công thức trước lần kiểm kê tới thì các đơn này sẽ được trừ bù.</div>`);
@@ -464,17 +511,19 @@ function renderInventory() {
   ])) : '<p class="muted">Chưa có nguyên liệu.</p>';
   const ingSel = $('ingForm').elements.id; const keepIng = ingSel.value;
   ingSel.innerHTML = '<option value="">+ Nguyên liệu mới</option>' + options(levels.map((l) => ({ value: l.ingredient_id, label: `${l.name}${l.active ? '' : ' (ngừng)'}` })), keepIng);
+  renderIngredients();
 
+  // Cả món đang ẩn (vd món theo mùa) để sửa được công thức đã nhập từ sổ.
   const prodSel = $('recipeForm').elements.product; const keepProd = prodSel.value;
-  const sellable = products.filter((p) => p.active);
-  prodSel.innerHTML = options(sellable.map((p) => ({ value: p.id, label: `${p.category} · ${p.name}${recipeAt(recipes, p.id, today()) ? '' : ' (chưa có)'}` })), keepProd);
+  const listed = [...products].sort((a, b) => Number(b.active) - Number(a.active));
+  prodSel.innerHTML = options(listed.map((p) => ({ value: p.id, label: `${p.category} · ${p.name}${p.active ? '' : ' (đang ẩn)'}${recipeAt(recipes, p.id, today()) ? '' : ' (chưa có)'}` })), keepProd);
   if (!$('recipeForm').elements.from.value) $('recipeForm').elements.from.value = today();
   fillRecipe();
 
   const rows = menuCostTable({ products, recipes, ingredients: levels, date: today() });
   $('menuCost').innerHTML = table([['Món'], ['Giá bán', 1], ['Giá vốn app', 1], ['Theo công thức', 1], ['Chênh', 1], ['Lãi gộp', 1]],
     rows.map((r) => [
-      `${esc(r.name)} <span class="muted small">${esc(r.category)}</span>${r.unpriced ? '<span class="tag">NL chưa có giá</span>' : ''}`,
+      `<button type="button" class="linkish" data-pid="${esc(r.id)}">${esc(r.name)}</button> <span class="muted small">${esc(r.category)}</span>${r.unpriced ? '<span class="tag">NL chưa có giá</span>' : ''}`,
       vnd(r.price), vnd(r.appCost), r.hasRecipe ? vnd(r.recipeCost) : '<span class="muted">chưa có</span>',
       r.diff == null ? '-' : `<span class="${r.diff > 0 ? 'down' : ''}">${r.diff > 0 ? '+' : ''}${vnd(r.diff)}</span>`,
       r.marginPct == null ? '-' : `${r.marginPct}%`,
@@ -493,16 +542,33 @@ function syncPurchaseUnits() {
   if ([...f.unit.options].map((o) => o.value).join() !== units.join()) f.unit.innerHTML = options(units.map((u) => ({ value: u, label: u })));
 }
 
+const numText = (n) => (n == null ? '' : String(Number(n)).replace('.', ','));
+
 function recipeLine(line = {}) {
   const active = inv.levels.filter((l) => l.active || l.ingredient_id === line.ingredientId);
+  const how = [{ value: '', label: 'theo cân/đong' }, ...Object.entries(MEASURES).map(([value, label]) => ({ value, label }))];
   return `<div class="row rline"><select name="ing" aria-label="Nguyên liệu"><option value="">Chọn nguyên liệu</option>${options(active.map((l) => ({ value: l.ingredient_id, label: `${l.name} (${l.unit})` })), line.ingredientId)}</select>`
-    + `<input name="qty" inputmode="decimal" placeholder="Định lượng" aria-label="Định lượng" value="${line.qty ?? ''}" style="max-width:140px"><button type="button" class="ghost rm" aria-label="Bỏ dòng">Bỏ</button></div>`;
+    + `<input name="qty" inputmode="decimal" placeholder="Số lượng" aria-label="Số lượng" value="${numText(line.measure ? line.measureCount : line.qty)}" style="max-width:110px">`
+    + `<select name="how" aria-label="Đong bằng">${options(how, line.measure ?? '')}</select><span class="conv" aria-live="polite"></span>`
+    + '<button type="button" class="ghost rm" aria-label="Bỏ dòng">Bỏ</button></div>';
+}
+
+// Đơn vị hiện cạnh ô số và lượng quy đổi khi đong bằng muỗng/vợt.
+function syncRecipeRows() {
+  for (const row of $('recipeRows').querySelectorAll('.rline')) {
+    const l = inv.levels.find((x) => x.ingredient_id === row.querySelector('[name=ing]').value);
+    const how = row.querySelector('[name=how]').value;
+    row.querySelector('[name=how] option[value=""]').textContent = l ? `${l.unit} (cân/đong)` : 'theo cân/đong';
+    const n = parseQtyInput(row.querySelector('[name=qty]').value);
+    row.querySelector('.conv').textContent = how && l && n ? `= ${qtyFmt(Math.round(n * measureSize(l, how) * 1000) / 1000, l.unit)}` : '';
+  }
 }
 
 function fillRecipe() {
   const f = $('recipeForm').elements;
   const lines = recipeAt(inv.recipes, f.product.value, f.from.value || today()) ?? [];
   $('recipeRows').innerHTML = (lines.length ? lines : [{}]).map(recipeLine).join('');
+  syncRecipeRows();
   updateRecipeCost();
 }
 
@@ -510,10 +576,12 @@ function readRecipeLines() {
   const out = [];
   for (const row of $('recipeRows').querySelectorAll('.rline')) {
     const id = row.querySelector('[name=ing]').value; const raw = row.querySelector('[name=qty]').value.trim();
+    const how = row.querySelector('[name=how]').value;
     if (!id && !raw) continue;
-    const qty = parseQtyInput(raw);
-    if (!id || !qty) throw new Error('Mỗi dòng công thức cần nguyên liệu và định lượng lớn hơn 0.');
-    out.push({ ingredientId: id, qty });
+    const n = parseQtyInput(raw);
+    if (!id || !n) throw new Error('Mỗi dòng công thức cần nguyên liệu và định lượng lớn hơn 0.');
+    const l = inv.levels.find((x) => x.ingredient_id === id);
+    out.push(how ? { ingredientId: id, measure: how, measureCount: n, qty: Math.round(n * measureSize(l, how) * 1000) / 1000 } : { ingredientId: id, qty: n });
   }
   return out;
 }
@@ -581,26 +649,111 @@ $('countForm').addEventListener('submit', (e) => {
   }).then((ok) => ok && e.target.reset());
 });
 
-$('ingForm').elements.id.addEventListener('change', (e) => {
-  const f = $('ingForm').elements; const l = inv.levels.find((x) => x.ingredient_id === e.target.value);
+// Nguyên liệu dùng trong công thức hiện hành, và dụng cụ đong đang dùng.
+function ingredientUse() {
+  const use = new Map();
+  for (const p of inv.products) for (const l of recipeAt(inv.recipes, p.id, today()) ?? []) {
+    const u = use.get(l.ingredientId) ?? { products: 0, measures: new Set() };
+    u.products += 1; if (l.measure) u.measures.add(l.measure);
+    use.set(l.ingredientId, u);
+  }
+  return use;
+}
+
+function measureText(l, only = null) {
+  return Object.keys(MEASURES).filter((m) => !only || only.has(m))
+    .map((m) => `${MEASURES[m]} ${qtyFmt(measureSize(l, m), l.unit)}${Number(l.measures?.[m]) > 0 ? '' : ' (mặc định)'}`).join(' · ');
+}
+
+function renderIngredients() {
+  const use = ingredientUse();
+  const q = normText($('ingSearch').value);
+  const rows = inv.levels.filter((l) => !q || normText(l.name).includes(q));
+  const guess = inv.levels.filter((l) => [...(use.get(l.ingredient_id)?.measures ?? [])].some((m) => !(Number(l.measures?.[m]) > 0)));
+  badge('nguyen-lieu', guess.length);
+  $('ingCount').textContent = `${inv.levels.length}`;
+  $('ingList').innerHTML = (guess.length ? `<div class="warn">${guess.length} nguyên liệu đang đong bằng muỗng/vợt theo cỡ mặc định (ước lượng khi nhập sổ). Cân thử một lần rồi nhập cỡ thật để giá vốn sát hơn.</div>` : '')
+    + table([['Nguyên liệu'], ['Đơn vị'], ['Tồn', 1], ['Dùng trong'], ['Đong bằng dụng cụ'], ['']], rows.map((l) => {
+      const u = use.get(l.ingredient_id);
+      const needs = [...(u?.measures ?? [])].some((m) => !(Number(l.measures?.[m]) > 0));
+      return [
+        `${esc(l.name)}${l.active ? '' : '<span class="tag">ngừng</span>'}`, esc(l.unit), qtyFmt(l.on_hand, l.unit),
+        u ? `${u.products} món` : '<span class="muted">chưa dùng</span>',
+        u?.measures.size ? `${needs ? '<span class="tag">cần chỉnh cỡ</span>' : ''}<span class="small">${esc(measureText(l, u.measures))}</span>` : '<span class="muted">-</span>',
+        `<button type="button" class="ghost" data-edit="${esc(l.ingredient_id)}" aria-label="Sửa ${esc(l.name)}">Sửa</button>`,
+      ];
+    }));
+}
+const normText = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
+
+function fillIngForm(id) {
+  const f = $('ingForm').elements; const l = inv.levels.find((x) => x.ingredient_id === id);
+  f.id.value = l ? id : '';
   f.name.value = l?.name ?? ''; f.unit.value = l?.unit ?? 'g'; f.low.value = l ? Number(l.low_stock) || '' : ''; f.active.checked = l ? l.active : true;
+  for (const m of Object.keys(MEASURES)) f[`m_${m}`].value = l && Number(l.measures?.[m]) > 0 ? numText(l.measures[m]) : '';
+  syncIngUnit();
+  $('ingFormTitle').textContent = l ? `Sửa ${l.name}` : 'Thêm nguyên liệu mới';
+}
+function syncIngUnit() {
+  const f = $('ingForm').elements;
+  $('ingForm').querySelector('.mu').textContent = f.unit.value;
+  const fake = { unit: f.unit.value, measures: {} };
+  for (const m of Object.keys(MEASURES)) f[`m_${m}`].placeholder = numText(measureSize(fake, m));
+}
+$('ingForm').elements.id.addEventListener('change', (e) => fillIngForm(e.target.value));
+$('ingForm').elements.unit.addEventListener('change', syncIngUnit);
+$('ingForm').addEventListener('reset', () => setTimeout(() => fillIngForm(''), 0));
+$('ingSearch').addEventListener('input', renderIngredients);
+$('ingList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-edit]');
+  if (!b) return;
+  fillIngForm(b.dataset.edit);
+  $('ingForm').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  $('ingForm').elements.name.focus({ preventScroll: true });
 });
 $('ingForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const f = e.target.elements; const low = f.low.value.trim() ? parseQtyInput(f.low.value) : 0;
   if (low == null) return invMsg('<div class="warn bad">Mức cảnh báo phải là số.</div>');
+  const measures = {};
+  for (const m of Object.keys(MEASURES)) {
+    const raw = f[`m_${m}`].value.trim();
+    if (!raw) continue;
+    const n = parseQtyInput(raw);
+    if (!n) return invMsg(`<div class="warn bad">Cỡ ${MEASURES[m]} phải là số lớn hơn 0, vd 12 hoặc 7,5.</div>`);
+    measures[m] = n;
+  }
+  const old = inv.levels.find((x) => x.ingredient_id === f.id.value);
+  const same = (a = {}, b = {}) => Object.keys(MEASURES).every((m) => (Number(a[m]) || 0) === (Number(b[m]) || 0));
   invAction(async () => {
-    await inventory.saveIngredient({ id: f.id.value || null, name: f.name.value.trim(), unit: f.unit.value, lowStock: low, active: f.active.checked });
-    return `Đã lưu nguyên liệu ${f.name.value.trim()}.`;
-  }).then((ok) => ok && e.target.reset());
+    const id = await inventory.saveIngredient({ id: f.id.value || null, name: f.name.value.trim(), unit: f.unit.value, lowStock: low, active: f.active.checked });
+    let extra = '';
+    if (!same(old?.measures, measures) || (old && old.unit !== f.unit.value)) {
+      const n = await inventory.setMeasures(id ?? f.id.value, measures);
+      if (n) extra = ` Đã tính lại ${n} dòng công thức theo cỡ dụng cụ mới.`;
+    }
+    return `Đã lưu nguyên liệu ${f.name.value.trim()}.${extra}`;
+  }).then((ok) => ok && fillIngForm(''));
 });
 
 $('recipeForm').elements.product.addEventListener('change', fillRecipe);
 $('recipeForm').elements.from.addEventListener('change', fillRecipe);
-$('recipeRows').addEventListener('input', updateRecipeCost);
-$('recipeRows').addEventListener('change', updateRecipeCost);
+$('recipeRows').addEventListener('input', () => { syncRecipeRows(); updateRecipeCost(); });
+$('recipeRows').addEventListener('change', () => { syncRecipeRows(); updateRecipeCost(); });
 $('recipeRows').addEventListener('click', (e) => { if (e.target.classList.contains('rm')) { e.target.closest('.rline').remove(); updateRecipeCost(); } });
-$('addLine').addEventListener('click', () => { $('recipeRows').insertAdjacentHTML('beforeend', recipeLine()); });
+$('addLine').addEventListener('click', () => {
+  $('recipeRows').insertAdjacentHTML('beforeend', recipeLine());
+  $('recipeRows').lastElementChild.querySelector('select').focus();
+});
+$('menuCost').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pid]');
+  if (!b) return;
+  $('recipeForm').elements.product.value = b.dataset.pid;
+  $('recipeForm').elements.from.value = today();
+  fillRecipe();
+  $('recipeForm').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  $('recipeForm').elements.product.focus({ preventScroll: true });
+});
 $('recipeForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const f = e.target.elements; const p = inv.products.find((x) => x.id === f.product.value);
