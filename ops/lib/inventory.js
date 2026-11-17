@@ -119,6 +119,27 @@ export class SupabaseInventoryStore {
     return this.client.rpc('ops_stock_waste', { p_ingredient: ingredientId, p_qty: qty, p_reason: reason });
   }
 
+  // Trợ lý nhập kho (ticket 6).
+  loadAssistant() {
+    return Promise.all([
+      this.client.select('ops_ingredient_aliases', 'select=alias_norm,ingredient_id'),
+      this.client.select('ops_purchase_docs', 'select=id,supplier,doc_no,doc_date,has_invoice,total,line_count,created_at&order=created_at.desc&limit=20'),
+    ]).then(([aliases, docs]) => ({ aliases: aliases.map((a) => ({ alias: a.alias_norm, ingredient_id: a.ingredient_id })), docs }));
+  }
+
+  importRecipes(payload) {
+    return this.client.rpc('ops_import_recipes', payload);
+  }
+
+  purchaseBatch(payload) {
+    return this.client.rpc('ops_purchase_batch', payload);
+  }
+
+  // file: { mime, data (base64) }. Chỉ trả bản nháp, không ghi gì.
+  readInvoice(file, ingredients) {
+    return this.client.invoke('ops-ai-import', { file, ingredients: ingredients.map((i) => ({ name: i.name, unit: i.unit })) });
+  }
+
   count(lines, note = '') {
     return this.client.rpc('ops_stock_count', { p_lines: lines.map((l) => ({ ingredient_id: l.ingredientId, counted: l.counted })), p_note: note });
   }

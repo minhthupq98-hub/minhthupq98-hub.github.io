@@ -135,6 +135,26 @@ export class SupabaseClient {
     if (!res.ok) throw new SupabaseSourceError(body?.message || `Gọi ${fn} lỗi ${res.status}`);
     return body;
   }
+
+  // Gọi Edge Function (vd ops-ai-import). Lỗi trả về {error} được hiện nguyên văn.
+  async invoke(fn, body) {
+    if (!this.accessToken) throw new SupabaseSourceError('Chưa đăng nhập');
+    let res;
+    try {
+      res = await this.fetch(`${this.url}/functions/v1/${fn}`, {
+        method: 'POST',
+        headers: { apikey: this.key, Authorization: `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      throw new SupabaseSourceError(`Không gọi được ${fn}: ${err.message}`);
+    }
+    const text = await res.text();
+    let out = null;
+    try { out = text ? JSON.parse(text) : null; } catch { /* trả chữ thô */ }
+    if (!res.ok) throw new SupabaseSourceError(out?.error || out?.message || `Gọi ${fn} lỗi ${res.status}`);
+    return out;
+  }
 }
 
 // Hiện thực hợp đồng đọc Order của ticket 1: phân trang theo order_number
