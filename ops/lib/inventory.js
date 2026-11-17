@@ -9,6 +9,16 @@ export const MOVE_LABEL = { purchase: 'Nhập hàng', sale: 'Bán', sale_reversa
 
 const num = (v) => Number(v ?? 0);
 
+// Dụng cụ quầy cho món không cân đong chuẩn được (ticket 7). Cỡ tính theo đơn vị gốc của
+// nguyên liệu; chưa đặt riêng thì dùng mặc định như hàm ops_measure_size trong database.
+export const MEASURES = { mn: 'muỗng nhỏ', mt: 'muỗng tròn to', vot: 'vợt topping' };
+const MEASURE_DEFAULT = { mn: 5, mt: 15, vot: 30 };
+export function measureSize(ingredient, measure) {
+  const own = Number(ingredient?.measures?.[measure]);
+  if (own > 0) return own;
+  return ingredient?.unit === 'cái' ? 1 : MEASURE_DEFAULT[measure];
+}
+
 // Số lượng từ ô nhập: cho phép dấu phẩy thập phân ("1,5"), tối đa 3 chữ số lẻ.
 export function parseQtyInput(text, unit = null, baseUnit = null) {
   const s = String(text ?? '').trim().replace(/\s/g, '').replace(',', '.');
@@ -30,7 +40,10 @@ export function recipeAt(recipes, productId, date) {
   const own = recipes.filter((r) => r.product_id === productId && r.effective_from <= date);
   if (!own.length) return null;
   const ef = own.reduce((m, r) => (r.effective_from > m ? r.effective_from : m), '');
-  return own.filter((r) => r.effective_from === ef && r.ingredient_id).map((r) => ({ ingredientId: r.ingredient_id, qty: num(r.qty), effectiveFrom: ef }));
+  return own.filter((r) => r.effective_from === ef && r.ingredient_id).map((r) => ({
+    ingredientId: r.ingredient_id, qty: num(r.qty), effectiveFrom: ef,
+    measure: r.measure ?? null, measureCount: r.measure ? num(r.measure_count) : null,
+  }));
 }
 
 export function recipeCost(lines, ingredientsById) {
@@ -95,7 +108,7 @@ export class SupabaseInventoryStore {
     const range = `business_date=gte.${from}&business_date=lt.${to}`;
     const [levels, recipes, products, moves, postings] = await Promise.all([
       this.client.select('ops_stock_levels', 'select=*&order=name.asc'),
-      this.client.select('ops_recipes', 'select=product_id,effective_from,ingredient_id,qty&order=effective_from.desc'),
+      this.client.select('ops_recipes', 'select=product_id,effective_from,ingredient_id,qty,measure,measure_count&order=effective_from.desc'),
       this.client.select('products', 'select=id,name,category,price,cost,active&order=category.asc,name.asc'),
       this.client.select('ops_stock_moves', `select=id,ingredient_id,kind,qty,unit_cost,value,order_id,business_date,supplier,note,created_at&${range}&order=created_at.desc&limit=5000`),
       this.client.select('ops_sale_postings', `select=order_id,status,value,missing&${range}&limit=5000`),
@@ -108,7 +121,14 @@ export class SupabaseInventoryStore {
   }
 
   setRecipe(productId, effectiveFrom, lines) {
-    return this.client.rpc('ops_set_recipe', { p_product_id: productId, p_effective_from: effectiveFrom, p_lines: lines.map((l) => ({ ingredient_id: l.ingredientId, qty: l.qty })) });
+    return this.client.rpc('ops_set_recipe', { p_product_id: productId, p_effective_from: effectiveFrom, p_lines: lines.map((l) => (l.measure
+      ? { ingredient_id: l.ingredientId, measure: l.measure, measure_count: l.measureCount }
+      : { ingredient_id: l.ingredientId, qty: l.qty })) });
+  }
+
+  // measures: { mn?, mt?, vot? } theo đơn vị gốc; trống = dùng cỡ mặc định.
+  setMeasures(ingredientId, measures) {
+    return this.client.rpc('ops_set_measures', { p_ingredient_id: ingredientId, p_measures: measures });
   }
 
   purchase({ ingredientId, qty, total, supplier = '', note = '' }) {
