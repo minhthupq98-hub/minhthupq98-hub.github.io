@@ -1,6 +1,9 @@
 // Trợ lý nhập kho (ticket 6): biến sổ công thức và hóa đơn thành BẢN NHÁP để chủ quán soát.
 // Không ghi gì: chỉ đoán tên món, gom tên nguyên liệu, quy đổi đơn vị và đánh dấu dòng
 // mơ hồ ("1 ít", "đầy ly", "2 muỗng"...). Ghi vào kho chỉ qua RPC sau khi người dùng xác nhận.
+// Ticket 7: "muỗng", "vợt" và cách ghi phỏng chừng ("1 lớp", "rắc lên") quy về dụng cụ quầy.
+
+import { measureSize } from './inventory.js';
 
 // Khóa so khớp: chữ thường, bỏ dấu, đ -> d, chỉ giữ chữ số và khoảng trắng.
 export function normKey(s) {
@@ -21,6 +24,19 @@ const NUM = String.raw`(\d+\/\d+|\d+(?:[.,]\d+)?)`;
 const toNum = (s) => (s.includes('/') ? Number(s.split('/')[0]) / Number(s.split('/')[1]) : Number(s.replace(',', '.')));
 const round3 = (n) => Math.round(n * 1000) / 1000;
 
+// Dụng cụ ghi rõ trong sổ.
+const MEASURE_WORDS = [
+  [/(muỗng|thìa)\s*(nhỏ|cà phê|cafe)/, 'mn'],
+  [/(muỗng|thìa)\s*(tròn|to|lớn|canh)/, 'mt'],
+  [/vợt/, 'vot'],
+];
+// Cách ghi phỏng chừng -> dụng cụ gần nhất, đánh dấu ước lượng để chủ quán chỉnh lại.
+const MEASURE_GUESS = [
+  [/(^|[\s\d])(lớp|muỗng|thìa)/, 'mt'],
+  [/(^|[\s\d])(phần|phủ)/, 'vot'],
+  [/(^|[\s\d])(ít|nhúm|chút|rắc)/, 'mn'],
+];
+
 // "4g" | "1,5 lít" | "1/4 trái" | "130–150ml" | "1 shot (50ml)" | "đầy ly" -> { qty, unit, flags }
 export function parseRecipeQty(text) {
   const raw = String(text ?? '').trim();
@@ -28,10 +44,19 @@ export function parseRecipeQty(text) {
   const inner = s.match(new RegExp(String.raw`\(\s*${NUM}\s*(g|ml|kg|l|lít)\s*\)`));
   if (inner) return { qty: round3(toNum(inner[1]) * UNIT[inner[2]][1]), unit: UNIT[inner[2]][0], flags: [] };
   const m = s.match(new RegExp(String.raw`^${NUM}(?:\s*[–\-~]\s*${NUM})?\s*([a-zà-ỹđ]+)?`));
-  if (!m) return { qty: null, unit: null, flags: ['vague'] };
+  const lead = s.match(new RegExp(String.raw`${NUM}`));
+  const count = lead ? toNum(lead[1]) : 1;
+  const tool = MEASURE_WORDS.find(([re]) => re.test(s));
+  if (tool) return { qty: null, unit: null, measure: tool[1], measureCount: count, flags: [], count, word: '' };
+  const vague = (word) => {
+    const g = MEASURE_GUESS.find(([re]) => re.test(s));
+    return g ? { qty: null, unit: null, measure: g[1], measureCount: count, flags: ['estimated'], count, word }
+      : { qty: null, unit: null, flags: ['vague'], count: m ? count : undefined, word };
+  };
+  if (!m) return vague('');
   const [, a, b, u] = m;
   if (u && ['phút', 'giờ', 'độ'].includes(u)) return { qty: null, unit: null, flags: ['not_ingredient'] };
-  if (!u || VAGUE_UNITS.includes(u) || !UNIT[u]) return { qty: null, unit: null, flags: ['vague'], count: toNum(a), word: u ?? '' };
+  if (!u || VAGUE_UNITS.includes(u) || !UNIT[u]) return { ...vague(u ?? ''), count: toNum(a) };
   const n = toNum(b ?? a);
   return { qty: round3(n * UNIT[u][1]), unit: UNIT[u][0], flags: b ? ['range'] : [] };
 }
@@ -113,7 +138,7 @@ function semiDefs(recipes) {
 
 const FLAG_TEXT = {
   vague: 'chưa có định lượng', range: 'sổ ghi khoảng, đang lấy số lớn', unit_conflict: 'khác đơn vị với các món khác',
-  semi_unit: 'không quy đổi được bán thành phẩm',
+  semi_unit: 'không quy đổi được bán thành phẩm', estimated: 'sổ ghi phỏng chừng, đang ước bằng muỗng/vợt',
 };
 export const flagText = (f) => FLAG_TEXT[f] ?? f;
 
@@ -129,14 +154,17 @@ export function recipeDraft(book, { products = [], ingredients = [], aliases = [
       if (isNonStock(l.rawName)) return;
       const q = parseRecipeQty(l.rawQty);
       if (q.flags.includes('not_ingredient')) return;
-      lines.push({ rawName: l.rawName, rawQty: l.rawQty, section: l.section, qty: q.qty == null ? null : round3(q.qty * factor), unit: q.unit, flags: [...q.flags], via, skip: false });
+      lines.push({
+        rawName: l.rawName, rawQty: l.rawQty, section: l.section, qty: q.qty == null ? null : round3(q.qty * factor), unit: q.unit,
+        measure: q.measure ?? null, measureCount: q.measure ? round3(q.measureCount * factor) : null, flags: [...q.flags], via, skip: false,
+      });
     };
     for (const l of r.lines) {
       const s = semis.get(normKey(l.rawName));
       if (s && !semi) {
         const q = parseRecipeQty(l.rawQty);
         const factor = s.yieldUnit === 'ml' && q.unit === 'ml' ? q.qty / s.yieldQty
-          : s.yieldUnit === 'phần' && q.flags.includes('vague') && q.count ? q.count : null;
+          : s.yieldUnit === 'phần' && q.qty == null && q.count ? q.count : null;
         if (factor == null) { lines.push({ rawName: l.rawName, rawQty: l.rawQty, section: l.section, qty: null, unit: null, flags: ['semi_unit'], via: null, skip: false }); continue; }
         for (const sl of s.lines) add(sl, s.title, factor);
       } else add(l);
@@ -157,29 +185,36 @@ export function recipeDraft(book, { products = [], ingredients = [], aliases = [
     l.key = key;
     if (!ing.has(key)) {
       const ex = byId.get(aliasMap.get(key)) ?? byName.get(key) ?? null;
-      ing.set(key, { key, rawNames: new Set(), name: ex?.name ?? cap(l.rawName), existingId: ex ? (ex.ingredient_id ?? ex.id) : null, existingUnit: ex?.unit ?? null, units: {}, uses: 0, skip: false });
+      ing.set(key, { key, rawNames: new Set(), name: ex?.name ?? cap(l.rawName), existingId: ex ? (ex.ingredient_id ?? ex.id) : null, existingUnit: ex?.unit ?? null, measures: ex?.measures ?? {}, units: {}, uses: 0, skip: false });
     }
     const e = ing.get(key); e.rawNames.add(l.rawName); e.uses += 1;
     if (l.unit) e.units[l.unit] = (e.units[l.unit] ?? 0) + 1;
   }
   for (const e of ing.values()) {
-    e.unit = e.existingUnit ?? Object.entries(e.units).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'g';
+    e.unit = e.existingUnit ?? Object.entries(e.units).sort((a, b) => b[1] - a[1])[0]?.[0] ?? (LIQUID.test(normKey(e.name)) ? 'ml' : 'g');
     e.rawNames = [...e.rawNames];
   }
   const draft = { recipes, ingredients: [...ing.values()].sort((a, b) => a.name.localeCompare(b.name, 'vi')) };
   return refreshFlags(draft);
 }
 
-// Tính lại cờ lệch đơn vị sau khi người dùng đổi đơn vị/gộp nguyên liệu.
+// Tính lại cờ lệch đơn vị (và lượng của dòng đong bằng dụng cụ) sau khi người dùng đổi
+// đơn vị/gộp nguyên liệu.
 export function refreshFlags(draft) {
   const ing = new Map(draft.ingredients.map((e) => [e.key, e]));
   for (const r of draft.recipes) for (const l of r.lines) {
+    if (l.measure) {
+      const e = ing.get(l.key);
+      l.unit = e?.unit ?? null;
+      l.qty = e ? round3(l.measureCount * measureSize(e, l.measure)) : null;
+    }
     l.flags = l.flags.filter((f) => f !== 'unit_conflict');
     if (l.unit && l.unit !== ing.get(l.key)?.unit) l.flags.push('unit_conflict');
   }
   return draft;
 }
 
+const LIQUID = /\b(syrup|siro|sot|nuoc|sua|monin)\b/;
 const cap = (s) => { const t = String(s).trim(); return t.charAt(0).toLocaleUpperCase('vi') + t.slice(1); };
 
 // Số dòng còn phải xử lý trước khi ghi (dòng thiếu lượng, lệch đơn vị, món chưa chọn).
@@ -216,14 +251,23 @@ export function recipeImportPayload(draft, from) {
   const p_recipes = [];
   for (const r of draft.recipes) {
     if (r.skip) continue;
+    // Cùng nguyên liệu nhiều dòng: cộng lượng; cùng một dụng cụ thì cộng số muỗng/vợt,
+    // khác dụng cụ thì chỉ giữ lượng đã quy đổi.
     const sum = new Map();
     for (const l of r.lines) {
       const e = ingByKey.get(l.key);
       if (l.skip || e.skip) continue;
       const fk = finalKey(e);
-      sum.set(fk, round3((sum.get(fk) ?? 0) + l.qty));
+      const cur = sum.get(fk);
+      if (!cur) { sum.set(fk, { key: fk, qty: l.qty, measure: l.measure ?? null, measure_count: l.measure ? l.measureCount : null }); continue; }
+      cur.qty = round3(cur.qty + l.qty);
+      if (cur.measure && cur.measure === l.measure) cur.measure_count = round3(cur.measure_count + l.measureCount);
+      else { cur.measure = null; cur.measure_count = null; }
     }
-    p_recipes.push({ product_id: r.productId, title: r.title, lines: [...sum].map(([key, qty]) => ({ key, qty })) });
+    p_recipes.push({
+      product_id: r.productId, title: r.title,
+      lines: [...sum.values()].map((x) => (x.measure ? { key: x.key, qty: x.qty, measure: x.measure, measure_count: x.measure_count } : { key: x.key, qty: x.qty })),
+    });
   }
   const seen = new Set();
   for (const r of p_recipes) {
