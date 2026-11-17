@@ -19,7 +19,7 @@
 <main>
   <section id="login" class="card narrow" hidden>
     <h1>Đăng nhập</h1>
-    <p class="muted">Dùng đúng tài khoản admin. Màn này chỉ đọc số, không sửa đơn hay món.</p>
+    <p class="muted">Dùng đúng tài khoản admin. Màn này không sửa đơn hay món; chỉ ghi ca, tiền két, chi phí từ két và sổ đối soát.</p>
     <form id="loginForm">
       <label>Email <input name="email" type="email" autocomplete="username" required></label>
       <label>Mật khẩu <input name="password" type="password" autocomplete="current-password" required></label>
@@ -41,6 +41,34 @@
     <p id="meta" class="muted small"></p>
     <div id="warnings"></div>
     <div id="kpis" class="kpis"></div>
+    <section class="card" id="shift">
+      <h2>Ca và tiền mặt <span id="shiftState" class="pill"></span></h2>
+      <div id="shiftStatus"></div>
+      <form id="openShiftForm" class="row" hidden>
+        <label>Tiền đầu ca <input name="cash" inputmode="numeric" placeholder="500.000" required></label>
+        <label>Ghi chú <input name="note" maxlength="200"></label>
+        <button type="submit">Mở ca</button>
+      </form>
+      <div id="shiftOpen" hidden>
+        <div id="shiftKpis" class="kpis"></div>
+        <form id="moveForm" class="row">
+          <select name="kind" aria-label="Loại"><option value="expense">Chi phí</option><option value="withdraw">Rút tiền</option><option value="deposit">Nộp thêm</option></select>
+          <input name="amount" inputmode="numeric" placeholder="Số tiền" aria-label="Số tiền" required>
+          <input name="note" maxlength="200" placeholder="Nội dung, vd mua đá" aria-label="Nội dung" required>
+          <input name="category" list="expenseCats" placeholder="Nhóm chi phí" aria-label="Nhóm chi phí">
+          <datalist id="expenseCats"><option>Nguyên liệu ngoài cost món</option><option>Vận hành</option><option>Lương</option><option>Mặt bằng</option><option>Marketing</option><option>Khác</option></datalist>
+          <button type="submit">Ghi</button>
+        </form>
+        <div id="moves"></div>
+        <form id="closeShiftForm" class="row">
+          <label>Tiền đếm được trong két <input name="counted" inputmode="numeric" required></label>
+          <label>Lý do nếu lệch <input name="note" maxlength="200"></label>
+          <button type="submit">Chốt ca</button>
+        </form>
+      </div>
+      <p id="shiftMsg"></p>
+      <details><summary>Các ca gần đây</summary><div id="shiftHistory"></div></details>
+    </section>
     <div class="grid2">
       <section class="card"><h2>Doanh thu theo ngày</h2><div id="days" class="bars"></div></section>
       <section class="card"><h2>Kênh và tiền về</h2><div id="channels"></div></section>
@@ -54,6 +82,7 @@
     <section class="card" id="ledger">
       <h2>Đối soát Grab và chốt kỳ <span id="ledgerPeriod" class="pill"></span></h2>
       <p class="muted small">Theo tháng đang chọn. Nhập file CSV đối soát Grab, xem trước rồi mới ghi vào sổ. Nhập lại cùng file hoặc cùng mã dòng không tạo dòng mới.</p>
+      <div class="row"><label>Ngày bắt đầu sổ <input id="startDate" type="date"></label><button id="saveStartDate" class="ghost">Lưu ngày</button><span class="muted small">Đơn và dòng Grab trước ngày này bị bỏ qua khi đối soát và chốt kỳ.</span></div>
       <div id="ledgerStatus"></div>
       <div id="ledgerKpis" class="kpis"></div>
       <div class="row">

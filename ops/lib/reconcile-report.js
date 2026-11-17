@@ -5,7 +5,7 @@ import { periodEnd, periodOf } from './period.js';
 // gồm cả các kỳ trước để tính phải thu tồn. lines: dòng đối soát đang hiệu lực.
 const sum = (xs, f) => xs.reduce((s, x) => s + f(x), 0);
 
-export function buildReconcileReport({ period, orderSync, lines, pendingRevisionCount = 0, locked = false }) {
+export function buildReconcileReport({ period, orderSync, lines, pendingRevisionCount = 0, locked = false, openShift = false, beforeStart = false }) {
   const end = periodEnd(period);
   const orders = orderSync.orders;
   const byOrderId = new Map(orders.map((o) => [o.orderId, o]));
@@ -74,6 +74,8 @@ export function buildReconcileReport({ period, orderSync, lines, pendingRevision
   if (orderSync.status !== 'ok') blockers.push(`Nguồn Order lỗi: ${orderSync.error}`);
   if (resolution.length) blockers.push(`${resolution.length} mục cần giải quyết`);
   if (pendingRevisionCount) blockers.push('Còn bản sửa file Grab chưa xác nhận');
+  if (openShift) blockers.push('Còn ca tiền mặt chưa chốt');
+  if (beforeStart) blockers.push('Kỳ trước ngày bắt đầu sổ, không chốt');
   const warnings = [];
   if (allocation === 'unavailable') warnings.push('File Grab chỉ có tổng: chưa phân bổ từng món, lãi theo món/kênh là ước tính');
   if (receivableEstimated) warnings.push('Phải thu Grab có phần ước tính từ đơn chưa quyết toán');

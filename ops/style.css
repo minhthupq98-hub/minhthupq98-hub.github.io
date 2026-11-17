@@ -38,3 +38,5 @@ h3{font-size:14px;margin:14px 0 6px}
 details{margin-top:12px}
 .ok{background:#e8f5ec;border-left:4px solid #2f8f4e;padding:8px 10px;border-radius:8px;margin:6px 0}
 button:disabled{opacity:.5;cursor:not-allowed}
+select{min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--card)}
+.row label{margin:0}.row input{width:auto}
