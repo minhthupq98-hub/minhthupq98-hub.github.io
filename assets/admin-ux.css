@@ -1,5 +1,7 @@
 /* THE KHE staff UI layer. Screen only; no bill, body, root or print rules. */
 @media screen {
+  .products-page .tk-product-margin-note { color: #4d594c; font-size: 12px; line-height: 1.6; margin: 0 0 12px; }
+  .products-page .product-manager-table td.tk-product-margin { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .workspace .catalog-panel { padding: 26px 28px 48px; }
   .workspace .catalog-head { gap: 16px; }
   .workspace .category-tabs { gap: 8px; }
@@ -54,6 +56,23 @@
 
   /* Desktop: keep visibility control available while the wide table scrolls. */
   @media (min-width: 821px) {
+    .products-page .product-manager-table thead th:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 4;
+      background: #f3f0e7;
+      box-shadow: 3px 0 8px #27301f14;
+    }
+    .products-page .product-manager-table tbody td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: #fffdf8;
+      box-shadow: 3px 0 8px #27301f14;
+    }
+    .products-page .product-manager-table tbody tr.product-hidden td:first-child {
+      background: #f2f1ec;
+    }
     .products-page .products-table-card {
       max-width: 100%;
       overflow-x: auto;
@@ -89,7 +108,7 @@
     .workspace .mini-switch button { font-size: 11px; }
     .workspace .qty button { width: 44px; height: 44px; }
     .orders-page .queue-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    /* Keep all nine cells and their existing controls; labels use CSS only. */
+    /* Keep every cell and its existing controls; labels use CSS only. */
     .products-page .products-table-card {
       overflow-x: visible;
       background: transparent;
@@ -158,7 +177,9 @@
     .products-page .product-manager-table tbody td:nth-child(6)::before { content: "Giá Grab"; }
     .products-page .product-manager-table tbody td:nth-child(7)::before { content: "Giá cost"; }
     .products-page .product-manager-table tbody td:nth-child(8)::before { content: "Lãi"; }
-    .products-page .product-manager-table tbody td:nth-child(9)::before { content: "Hiển thị"; }
+    .products-page .product-manager-table tbody td:nth-child(9)::before { content: "Biên lợi nhuận"; }
+    .products-page .product-manager-table tbody td:nth-child(10)::before { content: "Hiển thị"; }
+    .products-page .product-manager-table td.tk-product-margin { text-align: left; }
     .products-page .product-manager-table .product-image-upload {
       display: inline-block;
       vertical-align: middle;
