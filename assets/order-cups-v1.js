@@ -210,8 +210,29 @@ export function createCupUI(h, useState) {
   function BillDialog({ order, children, onClose }) {
     const [mode, setMode] = useState('bill');
     const [byRecipient, setByRecipient] = useState(false);
+    const [focusClose] = useState(() => {
+      const previousFocus = document.activeElement;
+      return (node) => {
+        if (node) node.focus({ preventScroll: true });
+        else if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+      };
+    });
     return el('div', { className: 'bill-dialog tk-bill-dialog', onClick: (event) => event.stopPropagation(),
-      onKeyDown: (event) => { if (event.key === 'Escape') onClose(); } },
+      onKeyDown: (event) => {
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); }
+        if (event.key === 'Tab') {
+          const controls = event.currentTarget.querySelectorAll('button:not([disabled])');
+          const first = controls[0], last = controls[controls.length - 1];
+          if (event.shiftKey && event.target === first) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && event.target === last) { event.preventDefault(); first.focus(); }
+        }
+      } },
+      el('header', { className: 'tk-bill-toolbar tk-print-controls' },
+        el('strong', { className: 'tk-bill-title' }, mode === 'prep' ? 'Phiếu pha chế' : 'Hóa đơn',
+          el('small', {}, order.code)),
+        el('button', { type: 'button', className: 'tk-bill-close', onClick: onClose,
+          'aria-label': 'Đóng hóa đơn', ref: focusClose },
+          el('span', { 'aria-hidden': true }, '×'), el('span', {}, 'Đóng'))),
       el('nav', { className: 'tk-bill-modes tk-print-controls', 'aria-label': 'Loại phiếu' },
         button('Hóa đơn', () => setMode('bill'), { 'aria-pressed': mode === 'bill', className: mode === 'bill' ? 'active' : '' }),
         button('Phiếu pha chế', () => setMode('prep'), { 'aria-pressed': mode === 'prep', className: mode === 'prep' ? 'active' : '' })),
