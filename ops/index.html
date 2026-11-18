@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>THE KHE · Màn chủ quán</title>
-<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./style.css?v=receipts-20261118">
 </head>
 <body>
 <a href="#main" class="skip">Bỏ qua menu</a>
@@ -34,7 +34,7 @@
       <ul>
       <li><a href="#tong-quan" data-nav="tong-quan"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Tổng quan</span><span class="nb" id="nb-tong-quan"></span></a></li>
       <li><a href="#ca" data-nav="ca"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2"/><path d="M3 6v12a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-3"/></svg><span>Ca & tiền mặt</span><span class="nb" id="nb-ca"></span></a></li>
-      <li><a href="#nhap-kho" data-nav="nhap-kho"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg><span>Nhập kho (AI)</span><span class="nb" id="nb-nhap-kho"></span></a></li>
+      <li><a href="#nhap-kho" data-nav="nhap-kho"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg><span>Nhập hàng & chi (AI)</span><span class="nb" id="nb-nhap-kho"></span></a></li>
       <li><a href="#kho" data-nav="kho"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg><span>Kho & giá vốn</span><span class="nb" id="nb-kho"></span></a></li>
       <li><a href="#nguyen-lieu" data-nav="nguyen-lieu"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.1-6"/></svg><span>Nguyên liệu</span><span class="nb" id="nb-nguyen-lieu"></span></a></li>
       <li><a href="#cong-thuc" data-nav="cong-thuc"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg><span>Công thức món</span><span class="nb" id="nb-cong-thuc"></span></a></li>
@@ -117,25 +117,16 @@
     </section>
 
     <section class="view" data-view="nhap-kho" aria-labelledby="h-nhap-kho" hidden>
-    <h1 id="h-nhap-kho" class="vtitle" tabindex="-1">Nhập kho</h1>
+    <h1 id="h-nhap-kho" class="vtitle" tabindex="-1">Nhập hàng & chi tiền</h1>
     <section class="card" id="assistant">
-      <h2>Trợ lý nhập kho <span class="pill">AI hỗ trợ</span></h2>
-      <p class="muted small">Chụp hóa đơn để AI đọc ra từng dòng, hoặc nhập tay hàng mua không có hóa đơn. Tải sổ công thức Word để nhập công thức cho cả menu. Không có gì được ghi cho tới khi bạn soát và bấm Ghi.</p>
+      <h2>Quét hóa đơn, chia nhóm chi và nhập kho <span class="pill">AI hỗ trợ</span></h2>
+      <p class="muted small">Chụp hóa đơn để AI đọc từng dòng và chia nhóm Nguyên liệu, Bao bì, Chi phí vận hành; hàng tồn tự nhập kho trong cùng lần ghi. Hoặc nhập tay hàng mua không có hóa đơn. Tải sổ công thức Word để nhập công thức cho cả menu. Không có gì được ghi cho tới khi bạn soát và bấm Ghi.</p>
       <div class="tabs" role="tablist" aria-label="Việc cần nhập">
         <button type="button" role="tab" id="tabBuy" aria-controls="panelBuy" aria-selected="true">Nhập hàng mua</button>
         <button type="button" role="tab" id="tabBook" aria-controls="panelBook" aria-selected="false" tabindex="-1">Sổ công thức</button>
       </div>
       <div role="tabpanel" id="panelBuy" aria-labelledby="tabBuy">
-        <ol class="steps" id="buySteps" aria-label="Các bước nhập hàng"><li class="on" aria-current="step">Chọn nguồn</li><li>Soát từng dòng</li><li>Ghi vào kho</li></ol>
-        <div id="buyStart" class="choices">
-          <label class="drop" id="invoiceDrop"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/><circle cx="12" cy="13" r="3.5"/></svg>
-            <span><b>Quét hóa đơn</b><span class="muted small">Chụp ảnh hoặc chọn file ảnh, PDF</span></span>
-            <input type="file" id="invoiceFile" accept="image/*,application/pdf" class="sr"></label>
-          <button type="button" class="drop" id="manualStart"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-            <span><b>Nhập tay</b><span class="muted small">Hàng mua chợ, không có hóa đơn</span></span></button>
-        </div>
-        <div id="buyMsg" aria-live="polite"></div>
-        <form id="buyForm" hidden novalidate></form>
+        <div id="receiptWorkspace"></div>
       </div>
       <div role="tabpanel" id="panelBook" aria-labelledby="tabBook" hidden>
         <ol class="steps" id="bookSteps" aria-label="Các bước nhập công thức"><li class="on" aria-current="step">Tải sổ</li><li>Soát công thức</li><li>Ghi công thức</li></ol>
@@ -163,11 +154,11 @@
     </section>
     <section class="card">
       <h2>Nhập nhanh một nguyên liệu</h2>
-      <p class="muted small">Có hóa đơn hoặc nhiều dòng thì dùng mục <a href="#nhap-kho" class="link">Nhập kho (AI)</a>.</p>
+      <p class="muted small">Có hóa đơn hoặc nhiều dòng thì dùng mục <a href="#nhap-kho" class="link">Nhập hàng & chi (AI)</a>.</p>
       <form id="purchaseForm" class="fields">
         <label class="wide">Nguyên liệu <select name="ingredient" required></select></label>
         <label>Số lượng <span class="pair"><input name="qty" inputmode="decimal" placeholder="vd 1,5" required><select name="unit" aria-label="Đơn vị nhập"></select></span></label>
-        <label>Tổng tiền <input name="total" inputmode="numeric" placeholder="vd 180.000" required></label>
+        <label>Tổng tiền <input name="total" inputmode="numeric" placeholder="vd 180.000" required></label><label>Nhóm chi<select name="category"><option>Nguyên liệu</option><option>Bao bì</option><option>Vật tư</option></select></label><label>Thanh toán<select name="paymentSource" required><option value="">Chọn nguồn tiền</option><option value="outside">Đã chi ngoài két</option><option value="till">Đã chi từ két trong ca</option><option value="unpaid">Chưa thanh toán</option></select></label>
         <label>Nhà cung cấp <span class="opt">(tùy chọn)</span><input name="supplier" maxlength="80"></label>
         <div class="act"><button type="submit">Nhập hàng</button></div>
       </form>
@@ -199,7 +190,7 @@
         <div class="fields">
           <label class="wide">Chọn để sửa <select name="id"><option value="">+ Thêm nguyên liệu mới</option></select></label>
           <label class="wide">Tên nguyên liệu <input name="name" maxlength="80" placeholder="vd Sữa tươi" required></label>
-          <label>Đơn vị gốc <select name="unit"><option value="g">g</option><option value="ml">ml</option><option value="cái">cái</option></select></label>
+          <label>Đơn vị gốc <select name="unit"><option value="g">g</option><option value="ml">ml</option><option value="cái">cái</option><option value="bịch">bịch</option><option value="gói">gói</option><option value="chai">chai</option><option value="hộp">hộp</option><option value="ly">ly</option><option value="túi">túi</option><option value="cuộn">cuộn</option><option value="thùng">thùng</option><option value="lon">lon</option><option value="bộ">bộ</option></select></label>
           <label>Báo sắp hết khi tồn dưới <span class="pair"><input name="low" inputmode="decimal" placeholder="0"><span class="unit mu2">g</span></span></label>
           <label class="check toggle"><input name="active" type="checkbox" checked> Đang dùng</label>
         </div>
@@ -236,7 +227,8 @@
 
     <section class="view" data-view="chi-phi" aria-labelledby="h-chi-phi" hidden>
     <h1 id="h-chi-phi" class="vtitle" tabindex="-1">Chi phí</h1>
-    <section class="card"><h2>Chi phí trong kỳ</h2><div id="expenses"></div></section>
+    <section class="card"><h2>Tiền đã chi theo nhóm</h2><p class="muted small rc-spending-note">Gồm tiền mua nguyên liệu, bao bì và khoản chi vận hành đã thanh toán. Đây là tiền chi ra, không cộng thêm vào chi phí tính lãi. Hóa đơn chưa thanh toán chưa tính vào số này.</p><div id="spendingSummary"></div><div id="spendingGroups"></div><details><summary>Chi tiết các khoản đã chi trong kỳ</summary><div id="spendingEntries"></div></details></section>
+    <section class="card"><h2>Chi phí vận hành để tính lãi</h2><div id="expenses"></div></section>
     </section>
 
     <section class="view" data-view="doi-soat" aria-labelledby="h-doi-soat" hidden>
@@ -262,6 +254,6 @@
   </section>
   <p id="status" class="muted center" role="status"></p>
 </main>
-<script type="module" src="./app.js"></script>
+<script type="module" src="./app.js?v=receipts-20261118"></script>
 </body>
 </html>

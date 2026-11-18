@@ -1,4 +1,4 @@
-import { periodEnd, periodOf } from './period.js';
+import { periodEnd, periodOf } from './period.js?v=receipts-20261118';
 
 // Báo cáo đối soát một kỳ, hàm thuần (chạy được cả Node lẫn trình duyệt).
 // orders: đơn đã chuẩn hóa {orderId, channel, period, businessDate, netRevenue, costOfGoods, payments[]},

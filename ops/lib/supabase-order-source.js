@@ -132,7 +132,7 @@ export class SupabaseClient {
     if (res.status === 401) throw new SupabaseSourceError('Phiên đăng nhập hết hạn, cần đăng nhập lại');
     const text = await res.text();
     const body = text ? JSON.parse(text) : null;
-    if (!res.ok) throw new SupabaseSourceError(body?.message || `Gọi ${fn} lỗi ${res.status}`);
+    if (!res.ok) { const error = new SupabaseSourceError(body?.message || `Gọi ${fn} lỗi ${res.status}`); error.status = res.status; throw error; }
     return body;
   }
 

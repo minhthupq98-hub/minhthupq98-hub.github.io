@@ -3,7 +3,7 @@
 // mơ hồ ("1 ít", "đầy ly", "2 muỗng"...). Ghi vào kho chỉ qua RPC sau khi người dùng xác nhận.
 // Ticket 7: "muỗng", "vợt" và cách ghi phỏng chừng ("1 lớp", "rắc lên") quy về dụng cụ quầy.
 
-import { measureSize } from './inventory.js';
+import { measureSize } from './inventory.js?v=receipts-20261118';
 
 // Khóa so khớp: chữ thường, bỏ dấu, đ -> d, chỉ giữ chữ số và khoảng trắng.
 export function normKey(s) {
@@ -17,6 +17,7 @@ const tokens = (s) => new Set(normKey(s).split(' ').filter(Boolean).flatMap((t) 
 const UNIT = {
   g: ['g', 1], gr: ['g', 1], gram: ['g', 1], gam: ['g', 1], kg: ['g', 1000],
   ml: ['ml', 1], l: ['ml', 1000], lit: ['ml', 1000], 'lít': ['ml', 1000],
+  ...Object.fromEntries(['bịch','gói','chai','hộp','túi','cuộn','thùng','lon','bộ'].map((u) => [u, [u, 1]])),
   'quả': ['cái', 1], 'trái': ['cái', 1], 'viên': ['cái', 1], 'cái': ['cái', 1], 'lát': ['cái', 1], 'miếng': ['cái', 1], 'hũ': ['cái', 1], 'ly': ['cái', 1],
 };
 const VAGUE_UNITS = ['muỗng', 'thìa', 'phần', 'lớp', 'shot', 'ít', 'nhúm', 'chút'];

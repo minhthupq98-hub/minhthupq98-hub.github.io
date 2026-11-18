@@ -2,9 +2,10 @@
 // Trừ kho theo đơn, giá bình quân và kiểm kê do database tính; các hàm ở đây chỉ
 // dựng số hiển thị (giá vốn theo công thức, tổng giá vốn kỳ, cảnh báo tồn).
 
-export const UNITS = ['g', 'ml', 'cái'];
+export const UNITS = ['g', 'ml', 'cái', 'bịch', 'gói', 'chai', 'hộp', 'ly', 'túi', 'cuộn', 'thùng', 'lon', 'bộ'];
 // Đơn vị nhập hàng quy về đơn vị gốc.
-export const PURCHASE_UNITS = { g: { g: 1, kg: 1000 }, ml: { ml: 1, l: 1000 }, 'cái': { 'cái': 1 } };
+export const PURCHASE_UNITS = { g: { g: 1, kg: 1000 }, ml: { ml: 1, l: 1000 },
+  ...Object.fromEntries(UNITS.filter((u) => !['g', 'ml'].includes(u)).map((u) => [u, { [u]: 1 }])) };
 export const MOVE_LABEL = { purchase: 'Nhập hàng', sale: 'Bán', sale_reversal: 'Hoàn kho đơn hủy', waste: 'Hủy/hao hụt', count: 'Lệch kiểm kê' };
 
 const num = (v) => Number(v ?? 0);
@@ -16,7 +17,7 @@ const MEASURE_DEFAULT = { mn: 5, mt: 15, vot: 30 };
 export function measureSize(ingredient, measure) {
   const own = Number(ingredient?.measures?.[measure]);
   if (own > 0) return own;
-  return ingredient?.unit === 'cái' ? 1 : MEASURE_DEFAULT[measure];
+  return ingredient?.unit && !['g', 'ml'].includes(ingredient.unit) ? 1 : MEASURE_DEFAULT[measure];
 }
 
 // Số lượng từ ô nhập: cho phép dấu phẩy thập phân ("1,5"), tối đa 3 chữ số lẻ.
@@ -131,8 +132,11 @@ export class SupabaseInventoryStore {
     return this.client.rpc('ops_set_measures', { p_ingredient_id: ingredientId, p_measures: measures });
   }
 
-  purchase({ ingredientId, qty, total, supplier = '', note = '' }) {
-    return this.client.rpc('ops_stock_purchase', { p_ingredient: ingredientId, p_qty: qty, p_total: total, p_supplier: supplier, p_note: note });
+  purchase({ ingredientId, qty, total, supplier = '', unit, category = 'Nguyên liệu', paymentSource, requestId, name = 'Nhập hàng' }) {
+    const date = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+    return this.client.rpc('ops_commit_receipt', { p_request_id: requestId,
+      p_doc: { supplier, doc_no: '', doc_date: date, has_invoice: false, file_hash: null, total, payment_source: paymentSource, paid_date: paymentSource === 'unpaid' ? null : date },
+      p_lines: [{ name, kind: 'stock', category, ingredient_id: ingredientId, new_name: null, new_unit: unit, qty, buy_qty: qty, buy_unit: unit, pack_size: null, total }] });
   }
 
   waste(ingredientId, qty, reason) {

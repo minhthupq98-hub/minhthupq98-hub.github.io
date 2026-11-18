@@ -1,13 +1,12 @@
 // Trợ lý nhập kho (ticket 6): quét hóa đơn / nhập tay / nhập sổ công thức.
 // Mọi thứ là BẢN NHÁP trong trình duyệt cho tới khi chủ quán bấm Ghi; ghi qua
-// ops_purchase_batch hoặc ops_import_recipes, mỗi lần là một giao dịch.
-import { PURCHASE_UNITS, MEASURES, parseQtyInput } from './lib/inventory.js';
-import { parseVndInput } from './lib/shift-store.js';
-import { docxToLines } from './lib/docx-text.js';
+// ops_commit_receipt hoặc ops_import_recipes, mỗi lần là một giao dịch.
+import { UNITS, MEASURES, parseQtyInput } from './lib/inventory.js?v=receipts-20261118';
+import { docxToLines } from './lib/docx-text.js?v=receipts-20261118';
+import { mountReceiptAssistant } from './receipt-assistant.js?v=receipts-20261118';
 import {
   parseRecipeBook, recipeDraft, refreshFlags, draftIssues, recipeImportPayload, flagText,
-  invoiceDraft, purchaseIssues, purchasePayload, emptyPurchaseLine,
-} from './lib/import-draft.js';
+} from './lib/import-draft.js?v=receipts-20261118';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -15,35 +14,26 @@ const vnd = (n) => `${new Intl.NumberFormat('vi-VN').format(n)}đ`;
 const numFmt = (n) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(n);
 const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 const opt = (value, label, sel) => `<option value="${esc(value)}"${value === sel ? ' selected' : ''}>${esc(label)}</option>`;
-const X_ICON = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
 let ctx = null; // { inventory, getInv, afterWrite }
 let aliases = [];
-let buy = null; let buyHash = null;
 let book = null; let bookFrom = today();
 
 export function initAssistant(options) {
   ctx = options;
   setupTabs();
-  $('invoiceFile').addEventListener('change', onInvoiceFile);
-  $('manualStart').addEventListener('click', () => startBuy(manualDraft(false)));
+  ctx.receipt = mountReceiptAssistant($('receiptWorkspace'), { client: ctx.inventory.client, getIngredients: () => ctx.getInv()?.levels, afterWrite: ctx.afterWrite });
   $('bookFile').addEventListener('change', onBookFile);
-  const bf = $('buyForm');
-  bf.addEventListener('input', onBuyInput);
-  bf.addEventListener('change', onBuyChange);
-  bf.addEventListener('focusout', onBuyBlur);
-  bf.addEventListener('click', onBuyClick);
-  bf.addEventListener('submit', onBuySubmit);
   const bk = $('bookReview');
   bk.addEventListener('input', onBookInput);
   bk.addEventListener('change', onBookChange);
   bk.addEventListener('click', onErrLink);
-  bf.addEventListener('click', onErrLink);
   $('bookForm').addEventListener('submit', onBookSubmit);
 }
 
 // Gọi sau mỗi lần trang tải lại kho: cập nhật tên khác đã học và lịch sử nhập.
 export async function refreshAssistant() {
+  ctx.receipt.refreshHistory();
   try {
     const r = await ctx.inventory.loadAssistant();
     aliases = r.aliases;
@@ -115,235 +105,6 @@ function renderRecent(docs) {
   $('asRecent').innerHTML = `<details><summary>Lần nhập gần đây (${docs.length})</summary><div class="tbl-wrap"><table><thead><tr><th>Ngày</th><th>Nhà cung cấp</th><th>Chứng từ</th><th class="n">Dòng</th><th class="n">Tổng</th></tr></thead><tbody>${docs.map((d) => `<tr><td>${esc(d.doc_date)}</td><td>${esc(d.supplier || 'không ghi')}</td><td>${d.has_invoice ? `Hóa đơn ${esc(d.doc_no)}` : 'Không hóa đơn'}</td><td class="n">${d.line_count}</td><td class="n">${vnd(d.total)}</td></tr>`).join('')}</tbody></table></div></details>`;
 }
 
-const ingredients = () => (ctx.getInv()?.levels ?? []).filter((l) => l.active);
-
-// ---------- nhập hàng ----------
-
-function manualDraft(hasInvoice) {
-  return { supplier: '', docNo: '', docDate: today(), hasInvoice, grandTotal: null, linesTotal: 0, extra: 0, lines: [emptyPurchaseLine()] };
-}
-
-function lineBase(l) {
-  return l.ingredientId ? ingredients().find((i) => i.ingredient_id === l.ingredientId)?.unit ?? 'g' : l.newUnit;
-}
-
-function startBuy(draft, hash = null) {
-  buy = draft; buyHash = hash;
-  buy.docDate ??= today();
-  for (const l of buy.lines) prepLine(l);
-  $('buyStart').hidden = true; $('buyForm').hidden = false;
-  steps('buySteps', 1);
-  renderBuy();
-  $('buyForm').querySelector('input')?.focus();
-}
-
-function prepLine(l) {
-  l.qtyUnit = lineBase(l);
-  l.qtyText = l.qty != null ? String(l.qty).replace('.', ',') : '';
-  l.totalText = l.total ? numFmt(l.total) : '';
-  if (!l.total) l.total = NaN; // bắt nhập thành tiền (gõ 0 nếu được tặng)
-  l.touched = {};
-}
-
-function resetBuy(keepMsg = false) {
-  buy = null; buyHash = null;
-  $('buyForm').hidden = true; $('buyStart').hidden = false; $('invoiceFile').value = '';
-  if (!keepMsg) msg('buyMsg', '');
-  steps('buySteps', 0);
-}
-
-async function onInvoiceFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const label = $('invoiceDrop');
-  label.classList.add('busy'); label.setAttribute('aria-busy', 'true');
-  msg('buyMsg', '<p class="muted small" role="status"><span class="spin" aria-hidden="true"></span>AI đang đọc hóa đơn, thường mất 5 đến 20 giây...</p>');
-  try {
-    const buf = await file.arrayBuffer();
-    const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))].map((b) => b.toString(16).padStart(2, '0')).join('');
-    const payload = await toPayload(file, buf);
-    const r = await ctx.inventory.readInvoice(payload, ingredients());
-    const d = invoiceDraft(r.invoice, { ingredients: ingredients(), aliases });
-    if (!d.lines.length) d.lines.push(emptyPurchaseLine());
-    const auto = d.lines.filter((l) => l.ingredientId).length;
-    msg('buyMsg', `<div class="ok" role="status">AI đọc được ${d.lines.length} dòng, tự khớp ${auto} dòng với nguyên liệu đã có. Soát lại số lượng và tiền trước khi ghi.</div>`);
-    startBuy(d, hash);
-  } catch (err) {
-    msg('buyMsg', `<div class="warn bad" role="alert">${esc(err.message)}<div class="row"><button type="button" class="ghost" id="manualFromFail">Nhập tay hóa đơn này</button></div></div>`);
-    $('manualFromFail').addEventListener('click', () => { startBuy(manualDraft(true)); msg('buyMsg', ''); });
-  } finally {
-    label.classList.remove('busy'); label.removeAttribute('aria-busy');
-  }
-}
-
-// Ảnh lớn thu về cạnh dài 2000px (đủ đọc chữ, gửi nhanh hơn). PDF/HEIC gửi nguyên.
-async function toPayload(file, buf) {
-  let mime = file.type || 'application/octet-stream';
-  let blob = file;
-  if (/^image\/(jpeg|png|webp)$/.test(mime) && file.size > 1_200_000) {
-    try {
-      const img = await createImageBitmap(file);
-      const k = Math.min(1, 2000 / Math.max(img.width, img.height));
-      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85)); mime = 'image/jpeg';
-    } catch { blob = file; }
-  }
-  const bytes = blob === file ? new Uint8Array(buf) : new Uint8Array(await blob.arrayBuffer());
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return { mime, data: btoa(bin) };
-}
-
-function buyRow(l, i) {
-  const ings = ingredients();
-  const base = lineBase(l);
-  const units = Object.keys(PURCHASE_UNITS[base] ?? { [base]: 1 });
-  const bad = (f) => (l.touched[f] && fieldError(l, f) ? ' aria-invalid="true"' : '');
-  const how = l.how === 'alias' ? '<span class="tag good">đã học tên này</span>' : l.how ? '<span class="tag good">tự khớp</span>' : '';
-  const flags = l.flags.includes('unit_conflict') ? '<span class="hint bad">AI đọc đơn vị khác kho, nhập lại số lượng</span>' : '';
-  return `<tr id="buyrow-${i}" class="${l.skip ? 'off' : ''}">
-    <td data-label="Hàng"><input data-key="b${i}-name" data-i="${i}" data-f="name" value="${esc(l.name)}" placeholder="Tên trên hóa đơn" aria-label="Tên hàng dòng ${i + 1}">
-      ${l.printed ? `<span class="hint">HĐ ghi: ${esc(l.printed)}</span>` : ''}${how}</td>
-    <td data-label="Vào kho thành">
-      <select data-key="b${i}-ing" data-i="${i}" data-f="ingredientId" aria-label="Nguyên liệu kho dòng ${i + 1}">
-        ${opt('', '+ Nguyên liệu mới', l.ingredientId ?? '')}${ings.map((x) => opt(x.ingredient_id, `${x.name} (${x.unit})`, l.ingredientId)).join('')}
-      </select>
-      ${l.ingredientId ? '' : `<div class="pair"><input data-key="b${i}-nn" data-i="${i}" data-f="newName" value="${esc(l.newName)}" placeholder="Tên nguyên liệu mới" aria-label="Tên nguyên liệu mới dòng ${i + 1}"${bad('newName')}>
-        <select data-key="b${i}-nu" data-i="${i}" data-f="newUnit" aria-label="Đơn vị gốc dòng ${i + 1}">${['g', 'ml', 'cái'].map((u) => opt(u, u, l.newUnit)).join('')}</select></div>`}
-    </td>
-    <td data-label="Số lượng" class="n"><div class="pair">
-      <input data-key="b${i}-q" data-i="${i}" data-f="qtyText" value="${esc(l.qtyText)}" inputmode="decimal" placeholder="vd 1,5" aria-label="Số lượng dòng ${i + 1}"${bad('qtyText')}>
-      <select data-key="b${i}-qu" data-i="${i}" data-f="qtyUnit" aria-label="Đơn vị nhập dòng ${i + 1}">${units.map((u) => opt(u, u, l.qtyUnit)).join('')}</select></div>${flags}</td>
-    <td data-label="Thành tiền" class="n"><input data-key="b${i}-t" data-i="${i}" data-f="totalText" value="${esc(l.totalText)}" inputmode="numeric" placeholder="0" aria-label="Thành tiền dòng ${i + 1}"${bad('totalText')}>
-      ${l.total !== l.amount && l.amount ? `<span class="hint">gồm ${vnd(l.total - l.amount)} thuế/phí</span>` : ''}</td>
-    <td class="act"><button type="button" class="icon" data-act="del" data-i="${i}" aria-label="Bỏ dòng ${i + 1}">${X_ICON}</button></td>
-  </tr>`;
-}
-
-function fieldError(l, f) {
-  if (f === 'qtyText') return !(l.qty > 0);
-  if (f === 'totalText') return !Number.isInteger(l.total) || l.total < 0;
-  if (f === 'newName') return !l.ingredientId && !l.newName.trim();
-  return false;
-}
-
-function renderBuy() {
-  const live = buy.lines.filter((l) => !l.skip);
-  rerender($('buyForm'), `
-    <div class="doc-grid">
-      <label>Nhà cung cấp<input data-key="d-sup" data-doc="supplier" value="${esc(buy.supplier)}" maxlength="120" placeholder="vd Đại lý sữa Minh Anh" autocomplete="off"></label>
-      <label>Số hóa đơn${buy.hasInvoice ? '' : ' <span class="muted small">(không có)</span>'}<input data-key="d-no" data-doc="docNo" value="${esc(buy.docNo)}" maxlength="60"></label>
-      <label>Ngày mua<input data-key="d-date" data-doc="docDate" type="date" value="${esc(buy.docDate ?? '')}" max="${today()}"></label>
-    </div>
-    <div class="tbl-wrap"><table class="edit">
-      <thead><tr><th>Hàng</th><th>Vào kho thành</th><th class="n">Số lượng</th><th class="n">Thành tiền</th><th><span class="sr">Bỏ dòng</span></th></tr></thead>
-      <tbody>${buy.lines.map((l, i) => (l.skip ? '' : buyRow(l, i))).join('')}</tbody>
-    </table></div>
-    <div class="row"><button type="button" class="ghost" data-act="add">+ Thêm dòng</button></div>
-    <div id="buyTotals" aria-live="polite">${buyTotals()}</div>
-    <div id="buyErrors"></div>
-    <div class="row actions">
-      <button type="submit" id="buySave">Ghi ${live.length} dòng vào kho</button>
-      <button type="button" class="ghost" data-act="cancel">Bỏ bản nháp</button>
-    </div>`);
-}
-
-function buyTotals() {
-  const sum = buy.lines.filter((l) => !l.skip).reduce((s, l) => s + (Number.isInteger(l.total) ? l.total : 0), 0);
-  const g = buy.grandTotal;
-  const diff = g != null ? g - sum : 0;
-  return `<p class="totals">Tổng các dòng <b>${vnd(sum)}</b>${g != null ? ` · Tổng hóa đơn ${vnd(g)}` : ''}</p>${g != null && diff !== 0 ? `<div class="warn">Lệch ${vnd(Math.abs(diff))} so với tổng hóa đơn. Kiểm tra dòng còn thiếu hoặc thành tiền đọc sai.</div>` : ''}`;
-}
-
-function setLine(l, f, v) {
-  if (f === 'name' || f === 'newName') l[f] = v;
-  else if (f === 'qtyText' || f === 'qtyUnit') { l[f] = v; l.qty = parseQtyInput(l.qtyText, l.qtyUnit, lineBase(l)); l.flags = l.flags.filter((x) => x !== 'unit_conflict'); }
-  else if (f === 'totalText') { l.totalText = v; const n = parseVndInput(v); l.total = n ?? NaN; }
-  else if (f === 'ingredientId' || f === 'newUnit') {
-    l[f] = f === 'ingredientId' ? (v || null) : v;
-    const base = lineBase(l);
-    if (!PURCHASE_UNITS[base]?.[l.qtyUnit]) l.qtyUnit = base;
-    l.qty = parseQtyInput(l.qtyText, l.qtyUnit, base);
-    if (f === 'ingredientId') l.how = null;
-  }
-}
-
-function onBuyInput(e) {
-  const t = e.target;
-  if (t.dataset.doc) { buy[t.dataset.doc] = t.value; return; }
-  if (t.dataset.i == null || t.tagName === 'SELECT') return;
-  const l = buy.lines[+t.dataset.i];
-  // Nguyên liệu mới mặc định lấy theo tên trên hóa đơn cho tới khi người dùng tự đặt tên.
-  if (t.dataset.f === 'name' && !l.ingredientId && (!l.newName || l.newName === l.autoName)) {
-    l.newName = t.value; l.autoName = t.value;
-    const nn = $('buyForm').querySelector(`[data-key="b${t.dataset.i}-nn"]`);
-    if (nn) nn.value = t.value;
-  }
-  setLine(l, t.dataset.f, t.value);
-  if (t.getAttribute('aria-invalid') && !fieldError(buy.lines[+t.dataset.i], t.dataset.f)) t.removeAttribute('aria-invalid');
-  $('buyTotals').innerHTML = buyTotals();
-}
-
-function onBuyChange(e) {
-  const t = e.target;
-  if (t.tagName !== 'SELECT' || t.dataset.i == null) return;
-  setLine(buy.lines[+t.dataset.i], t.dataset.f, t.value);
-  renderBuy();
-}
-
-function onBuyBlur(e) {
-  const t = e.target;
-  if (t.dataset.i == null || !['qtyText', 'totalText', 'newName'].includes(t.dataset.f)) return;
-  const l = buy.lines[+t.dataset.i];
-  if (!t.value.trim() && !l.touched[t.dataset.f] && t.dataset.f !== 'totalText') return; // ô trống chưa gõ: chưa báo
-  l.touched[t.dataset.f] = true;
-  if (fieldError(l, t.dataset.f)) t.setAttribute('aria-invalid', 'true'); else t.removeAttribute('aria-invalid');
-}
-
-function onBuyClick(e) {
-  const b = e.target.closest('[data-act]');
-  if (!b) return;
-  if (b.dataset.act === 'add') {
-    const l = emptyPurchaseLine(); prepLine(l); buy.lines.push(l); renderBuy();
-    $('buyForm').querySelector(`[data-key="b${buy.lines.length - 1}-name"]`)?.focus();
-  } else if (b.dataset.act === 'del') {
-    buy.lines[+b.dataset.i].skip = true;
-    renderBuy();
-    $('buyForm').querySelector('[data-act="add"]').focus();
-  } else if (b.dataset.act === 'cancel') resetBuy();
-}
-
-async function onBuySubmit(e) {
-  e.preventDefault();
-  const d = { ...buy, docDate: buy.docDate || null, lines: buy.lines.map((l) => ({ ...l, total: Number.isInteger(l.total) ? l.total : NaN })) };
-  const { issues, payload } = purchasePayload(d, buyHash);
-  if (issues.length) {
-    buy.lines.forEach((l) => { l.touched = { qtyText: true, totalText: true, newName: true }; });
-    renderBuy();
-    const rows = buy.lines.map((l, i) => [l, i]).filter(([l]) => !l.skip);
-    $('buyErrors').innerHTML = errorSummary(issues.map((text) => {
-      const hit = rows.find(([l, i]) => text.startsWith(`${l.name || l.newName || `Dòng ${rows.findIndex((r) => r[1] === i) + 1}`}:`));
-      return { text, href: hit ? `buyrow-${hit[1]}` : null };
-    }));
-    $('buyErrors').firstElementChild?.focus();
-    return;
-  }
-  const btn = $('buySave');
-  busy(btn, true, 'Đang ghi vào kho...');
-  try {
-    const r = await ctx.inventory.purchaseBatch(payload);
-    steps('buySteps', 3);
-    resetBuy(true);
-    steps('buySteps', 3);
-    msg('buyMsg', `<div class="ok" role="status">Đã nhập kho ${r.lines.length} dòng, tổng ${vnd(r.total)}. Giá bình quân đã cập nhật.</div>`);
-    await ctx.afterWrite();
-  } catch (err) {
-    busy(btn, false);
-    $('buyErrors').innerHTML = errorSummary([{ text: err.message }]);
-    $('buyErrors').firstElementChild?.focus();
-  }
-}
 
 // ---------- sổ công thức ----------
 
@@ -403,7 +164,7 @@ function renderBook() {
         <td data-label="Ghi vào kho là"><select data-key="gi${i}-id" data-g="${i}" data-f="existingId" aria-label="Nguyên liệu kho cho ${esc(e.rawNames[0])}">
           ${opt('', '+ Tạo mới', e.existingId ?? '')}${ings.map((x) => opt(x.ingredient_id, `${x.name} (${x.unit})`, e.existingId)).join('')}</select>
           ${e.existingId ? '' : `<input data-key="gi${i}-n" data-g="${i}" data-f="name" value="${esc(e.name)}" maxlength="80" aria-label="Tên nguyên liệu mới cho ${esc(e.rawNames[0])}">`}</td>
-        <td data-label="Đơn vị">${e.existingId ? esc(e.unit) : `<select data-key="gi${i}-u" data-g="${i}" data-f="unit" aria-label="Đơn vị của ${esc(e.name)}">${['g', 'ml', 'cái'].map((u) => opt(u, u, e.unit)).join('')}</select>`}</td>
+        <td data-label="Đơn vị">${e.existingId ? esc(e.unit) : `<select data-key="gi${i}-u" data-g="${i}" data-f="unit" aria-label="Đơn vị của ${esc(e.name)}">${UNITS.map((u) => opt(u, u, e.unit)).join('')}</select>`}</td>
         <td data-label="Dùng ở" class="n">${e.uses} dòng</td>
         <td data-label="Không trừ kho"><label class="check"><input type="checkbox" data-g="${i}" data-f="skip"${e.skip ? ' checked' : ''}> bỏ</label></td>
       </tr>`).join('')}</tbody></table></div>

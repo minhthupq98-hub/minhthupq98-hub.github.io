@@ -1,12 +1,13 @@
-import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js';
-import { SupabaseClient, SupabaseOrderReader, readSupabaseOrders, readExpenses, readSettings } from './lib/supabase-order-source.js';
-import { buildOwnerDashboard, monthRange, rangeToIso } from './lib/owner-dashboard.js';
-import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js';
-import { buildReconcileReport } from './lib/reconcile-report.js';
-import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js';
-import { initAssistant, refreshAssistant } from './assistant.js';
-import { mountFinanceAgent } from './finance-agent.js';
-import { SupabaseInventoryStore, PURCHASE_UNITS, MEASURES, measureSize, MOVE_LABEL, parseQtyInput, weightedAvgCost, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js';
+import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js?v=receipts-20261118';
+import { SupabaseClient, SupabaseOrderReader, readSupabaseOrders, readExpenses, readSettings } from './lib/supabase-order-source.js?v=receipts-20261118';
+import { buildOwnerDashboard, monthRange, rangeToIso } from './lib/owner-dashboard.js?v=receipts-20261118';
+import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js?v=receipts-20261118';
+import { buildReconcileReport } from './lib/reconcile-report.js?v=receipts-20261118';
+import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js?v=receipts-20261118';
+import { initAssistant, refreshAssistant } from './assistant.js?v=receipts-20261118';
+import { readSpendingEntries, summarizeSpending } from './lib/spending.js?v=receipts-20261118';
+import { mountFinanceAgent } from './finance-agent.js?v=receipts-20261118';
+import { SupabaseInventoryStore, PURCHASE_UNITS, MEASURES, measureSize, MOVE_LABEL, parseQtyInput, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js?v=receipts-20261118';
 
 const OWN_KEY = 'the-khe-ops-session';
 const $ = (id) => document.getElementById(id);
@@ -159,10 +160,21 @@ async function load() {
     await loadShift();
     loadInventory();
     loadLedger();
+    loadSpending();
   } catch (err) {
     if (/đăng nhập/i.test(err.message)) return showLogin(err.message);
     $('status').textContent = `Không đọc được số: ${err.message}. Bấm Tải lại để thử lại.`;
   }
+}
+
+async function loadSpending() {
+  try {
+    const entries = await readSpendingEntries(client, currentRange());
+    const summary = summarizeSpending(entries);
+    $('spendingSummary').innerHTML = `<div class="kpis"><div class="kpi"><div class="l">Tổng tiền đã chi</div><div class="v">${vnd(summary.total)}</div></div><div class="kpi"><div class="l">Mua hàng vào kho</div><div class="v">${vnd(summary.stock)}</div></div><div class="kpi"><div class="l">Chi vận hành đã trả</div><div class="v">${vnd(summary.expense)}</div></div></div>`;
+    $('spendingGroups').innerHTML = table([['Nhóm chi'], ['Tiền đã chi', 1]], summary.byCategory.map((x) => [esc(x.category), vnd(x.amount)]));
+    $('spendingEntries').innerHTML = table([['Ngày chi'], ['Nội dung'], ['Nhóm'], ['Cách ghi'], ['Số tiền', 1]], entries.slice(0, 200).map((x) => [esc(x.paid_date), esc(x.name), esc(x.category), x.kind === 'stock' ? 'Mua hàng vào kho' : 'Chi vận hành', vnd(x.amount)]));
+  } catch (e) { $('spendingSummary').innerHTML = `<p class="err">Chưa đọc được báo cáo tiền chi: ${esc(e.message)}</p>`; }
 }
 
 function delta(v, label) {
@@ -681,17 +693,25 @@ async function invAction(fn) {
 }
 
 $('purchaseForm').elements.ingredient.addEventListener('change', syncPurchaseUnits);
-$('purchaseForm').addEventListener('submit', (e) => {
+$('purchaseForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const f = e.target.elements; const l = inv.levels.find((x) => x.ingredient_id === f.ingredient.value);
-  const qty = parseQtyInput(f.qty.value, f.unit.value, l?.unit); const total = parseVndInput(f.total.value);
-  if (!l || !qty) return invMsg('<div class="warn bad">Số lượng phải lớn hơn 0, vd 1,5.</div>');
-  if (total == null) return invMsg('<div class="warn bad">Tổng tiền phải là số, vd 180000.</div>');
-  const avg = weightedAvgCost(l.on_hand, l.avg_cost, qty, total);
-  invAction(async () => {
-    const r = await inventory.purchase({ ingredientId: l.ingredient_id, qty, total, supplier: f.supplier.value });
-    return `Đã nhập ${qtyFmt(qty, l.unit)} ${l.name}, ${vnd(total)}. Giá bình quân mới ${Number(r?.avg_cost ?? avg).toLocaleString('vi-VN')}đ/${l.unit}.`;
-  }).then((ok) => ok && e.target.reset());
+  const form = e.target, f = form.elements, button = form.querySelector('[type=submit]');
+  if (button.disabled) return;
+  const l = inv.levels.find((x) => x.ingredient_id === f.ingredient.value);
+  const qty = parseQtyInput(f.qty.value, f.unit.value, l?.unit), total = parseVndInput(f.total.value);
+  if (!l || !qty || total == null || !f.paymentSource.value) return invMsg('<div class="warn bad">Kiểm tra số lượng, tiền và nguồn thanh toán.</div>');
+  const signature = JSON.stringify([l.ingredient_id, qty, total, f.supplier.value, f.category.value, f.paymentSource.value]);
+  if (form.dataset.attempted && form.dataset.attempted !== signature) return invMsg('<div class="warn bad">Kiểm tra lịch sử chứng từ trước khi đổi nội dung lần gửi trước.</div>');
+  form.dataset.request ||= crypto.randomUUID(); form.dataset.attempted = signature; button.disabled = true;
+  try {
+    const r = await inventory.purchase({ ingredientId: l.ingredient_id, qty, total, supplier: f.supplier.value, unit: l.unit, name: l.name, category: f.category.value, paymentSource: f.paymentSource.value, requestId: form.dataset.request });
+    if (!r?.receipt_id) throw new Error('Chưa nhận xác nhận ghi chứng từ.');
+    const savedCategory = f.category.value;
+    form.reset(); delete form.dataset.request; delete form.dataset.attempted;
+    await load();
+    invMsg(`<div class="ok">Đã nhập ${qtyFmt(qty, l.unit)} ${esc(l.name)}; tiền đã chi ${vnd(r.paid_total)} vào nhóm ${esc(savedCategory)}.</div>`);
+  } catch (error) { if (error.status >= 400 && error.status < 500) delete form.dataset.attempted; invMsg(`<div class="warn bad">${esc(error.message)}</div>`); }
+  finally { button.disabled = false; }
 });
 
 $('wasteForm').addEventListener('submit', (e) => {
@@ -843,12 +863,7 @@ $('recipeForm').addEventListener('submit', (e) => {
 initAssistant({
   inventory,
   getInv: () => inv,
-  afterWrite: async () => {
-    await inventory.sync();
-    inv = await inventory.load(currentRange());
-    renderInventory();
-    await refreshAssistant();
-  },
+  afterWrite: async () => { await load(); },
 });
 
 function start() {
