@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+const assetVersion = 'bill-close-20261118';
 const original = readFileSync(resolve(root, 'assets/index-BpABOaN7.js'), 'utf8');
 const sha = createHash('sha1').update(`blob ${Buffer.byteLength(original)}\0`).update(original).digest('hex');
 if (sha !== '28e83faab93c36b034d6bcfbcce2803cd0128412') {
@@ -35,7 +36,7 @@ replaceOnce('[e.ice,e.sweetness,e.extras?.join(`, `),e.lineNote].filter(Boolean)
 const queue = 'e.items.map(e=>`${e.qty}× ${e.name}${[e.ice,e.sweetness,e.extras?.join(`, `)].filter(Boolean).length?` (${[e.ice,e.sweetness,e.extras?.join(`, `)].filter(Boolean).join(` · `)})`:``}`).join(` · `)';
 replaceOnce(queue, 'e.items.map(e=>`${e.qty}× ${e.name}${tkItemSummary(e)?` (${tkItemSummary(e)})`:``}`).join(` · `)');
 
-bundle = 'import {createCupUI as tkCreateCupUI,addProduct as tkAddProduct,normalizeLines as tkNormalizeLines,itemSummary as tkItemSummary} from "./order-cups-v1.js";\n' + bundle.replaceAll('\u2014', '-');
+bundle = `import {createCupUI as tkCreateCupUI,addProduct as tkAddProduct,normalizeLines as tkNormalizeLines,itemSummary as tkItemSummary} from "./order-cups-v1.js?v=${assetVersion}";\n` + bundle.replaceAll('\u2014', '-');
 writeFileSync(resolve(root, 'assets/staff-cup-notes-v1.js'), bundle);
 const indexPath = resolve(root, 'index.html');
 let html = readFileSync(indexPath, 'utf8');
@@ -45,5 +46,7 @@ if (!html.includes('/assets/order-cups-v1.css')) {
   if (!html.includes(anchor)) throw new Error('Missing staff stylesheet anchor');
   html = html.replace(anchor, `${anchor}\n          var cupStylesheet = document.createElement("link");\n          cupStylesheet.rel = "stylesheet";\n          cupStylesheet.href = "/assets/order-cups-v1.css";\n          document.head.appendChild(cupStylesheet);`);
 }
+html = html.replace(/\/assets\/order-cups-v1\.css(?:\?v=[\w-]+)?/g, `/assets/order-cups-v1.css?v=${assetVersion}`);
+html = html.replace(/\/assets\/staff-cup-notes-v1\.js(?:\?v=[\w-]+)?/g, `/assets/staff-cup-notes-v1.js?v=${assetVersion}`);
 writeFileSync(indexPath, html);
 console.log('Built per-cup notes for staff; customer redirect and existing Operations files retained.');

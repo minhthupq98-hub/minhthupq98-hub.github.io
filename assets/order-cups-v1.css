@@ -1,4 +1,5 @@
 .tk-cup-editor,.tk-bill-dialog{--tk-accent:var(--olive-dark,#3f4c2c);--tk-muted:#59624f;--tk-line:var(--line,#dedbcd);--tk-surface:var(--paper,#fffcf5);--tk-note:#704615}
+.tk-bill-dialog{max-height:calc(100dvh - 36px);overflow-y:auto;overscroll-behavior:contain;border-radius:12px;scrollbar-width:thin}
 .tk-order-panel .tk-order-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#aeb99c transparent}
 .tk-order-panel .cart-lines{flex:none;min-height:0;max-height:none;overflow:visible;padding-bottom:12px}
 .tk-order-panel .order-footer{display:block;flex:none;min-height:0;max-height:none;overflow:visible}
@@ -36,13 +37,21 @@
 .tk-split-actions button{font-size:11px}
 .tk-single-hint,.tk-existing-details{font-size:11px;color:var(--tk-muted);line-height:1.5}
 .tk-existing-details{margin:10px 0 0}
-.tk-bill-modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;background:#edf0e4;border-bottom:1px solid var(--tk-line);border-radius:16px 16px 0 0}
+.tk-bill-toolbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:var(--tk-surface);border-bottom:1px solid var(--tk-line);border-radius:12px 12px 0 0;box-shadow:0 2px 8px #24302714}
+.tk-bill-title{min-width:0;color:var(--tk-accent);font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+.tk-bill-title small{display:block;font-size:11px;font-weight:600;color:var(--tk-muted)}
+.tk-bill-close{display:flex;align-items:center;justify-content:center;gap:8px;flex-shrink:0;min-height:44px;min-width:88px;padding:8px 12px;border:1px solid var(--tk-accent);border-radius:8px;background:var(--tk-accent);color:#fff;cursor:pointer;font:inherit;font-size:14px;font-weight:700}
+.tk-bill-close>span:first-child{font-size:24px;line-height:1}
+.tk-bill-close:hover{background:#2d3b22}
+.tk-bill-modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;background:#edf0e4;border-bottom:1px solid var(--tk-line)}
 .tk-bill-modes button{font-size:14px}
 .tk-bill-modes button.active,.tk-prep-controls button.active{background:var(--tk-accent);color:#fff;border-color:var(--tk-accent)}
 .tk-prep-controls{display:flex;gap:8px;padding:10px 12px;background:#fafbf6}
 .tk-bill-dialog .bill-item small{line-height:1.55;white-space:normal;overflow-wrap:anywhere;color:#38422e;font-size:12px}
 .tk-bill-dialog .bill-item:has(.tk-item-note) small{font-weight:700}
-.tk-bill-dialog .bill-actions{position:sticky;bottom:0;background:#fff;z-index:1}
+.tk-bill-dialog .bill-actions{position:sticky;bottom:0;z-index:2;margin-top:0;padding:10px 12px;background:var(--tk-surface);border-top:1px solid var(--tk-line);border-radius:0 0 12px 12px}
+.tk-bill-dialog .bill-actions button{min-height:44px;border:1px solid var(--tk-line);background:#fff;color:var(--tk-accent);font:inherit;font-size:13px;font-weight:700}
+.tk-bill-dialog .bill-actions .print-bill{border-color:var(--tk-accent);background:var(--tk-accent);color:#fff}
 .tk-prep-paper{padding:22px;color:#172016}
 .tk-prep-header{border-bottom:2px solid currentColor;padding-bottom:14px}
 .tk-prep-eyebrow{font-size:12px;font-weight:800;letter-spacing:.18em}
@@ -72,6 +81,6 @@
 .tk-recipient-line p{font-size:13px;margin:4px 0 0;color:var(--tk-note)}
 .tk-prep-footer,.tk-prep-delivery{border-top:1px dashed #aab19e;padding-top:12px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 @media(max-width:820px){.tk-order-panel.mobile-collapsed>.tk-order-body,.tk-order-panel.mobile-collapsed>.order-submit-dock{display:none}.tk-order-panel .order-footer{padding:0}.tk-order-panel .order-form-scroll{padding-bottom:16px}.tk-order-panel>.order-submit-dock{padding-bottom:max(12px,env(safe-area-inset-bottom))}.tk-order-panel.mobile-collapsed .note-field{display:none}}
-@media(max-width:600px){.tk-cup-card{padding:10px}.tk-field input,.tk-field select{font-size:16px}.tk-cup-options .tk-field{grid-template-columns:75px minmax(0,1fr)}.tk-quantity{gap:4px}.tk-quantity button{min-width:44px}.tk-prep-paper{padding:16px}.tk-prep-controls button{flex:1}.tk-bill-dialog{max-width:100%}}
+@media(max-width:600px){.tk-cup-card{padding:10px}.tk-field input,.tk-field select{font-size:16px}.tk-cup-options .tk-field{grid-template-columns:75px minmax(0,1fr)}.tk-quantity{gap:4px}.tk-quantity button{min-width:44px}.tk-prep-paper{padding:16px}.tk-prep-controls button{flex:1}.tk-bill-dialog{max-width:100%;max-height:calc(100dvh - 20px)}}
 @media(prefers-reduced-motion:reduce){.tk-cup-editor *,.tk-bill-dialog *{transition:none!important}}
 @media print{.bill-modal .tk-print-controls{display:none!important}.bill-modal,.tk-bill-dialog{height:auto!important;max-height:none!important;overflow:visible!important}.tk-bill-dialog{width:100%!important;max-width:80mm!important}.bill-modal .bill-actions{display:none!important}.tk-prep-paper{padding:4mm;color:#000}.tk-prep-group{overflow:visible;border-color:#555}.tk-prep-group>header{break-after:avoid}.tk-variant-heading.has-notes,.tk-recipient-line p,.tk-prep-view-name{color:#000}.tk-prep-header,.tk-prep-group>header,.tk-prep-total{background:#fff!important}.tk-order-note{color:#000;background:#fff;border:2px solid #000}.tk-prep-header h2{font-size:21px}.tk-prep-recipient,.tk-recipient-line,.tk-variant-heading{font-size:13px}.tk-prep-variant,.tk-recipient-line{break-inside:avoid}}
