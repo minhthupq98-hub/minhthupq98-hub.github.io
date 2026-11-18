@@ -3,9 +3,12 @@ on:
   pull_request:
     paths:
       - 'assets/order-cups-v1.*'
+      - 'assets/product-margin-v1.js'
+      - 'assets/admin-ux.css'
       - 'assets/staff-cup-notes-v1.js'
       - 'scripts/build-cup-notes.mjs'
       - 'test/cup-notes*'
+      - 'test/product-margin.test.mjs'
       - 'package.json'
       - 'index.html'
       - '.github/workflows/order-cup-notes.yml'
@@ -13,9 +16,12 @@ on:
     branches: [main]
     paths:
       - 'assets/order-cups-v1.*'
+      - 'assets/product-margin-v1.js'
+      - 'assets/admin-ux.css'
       - 'assets/staff-cup-notes-v1.js'
       - 'scripts/build-cup-notes.mjs'
       - 'test/cup-notes*'
+      - 'test/product-margin.test.mjs'
       - 'package.json'
       - 'index.html'
       - '.github/workflows/order-cup-notes.yml'

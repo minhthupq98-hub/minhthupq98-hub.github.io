@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const assetVersion = 'bill-close-20261118';
+const assetVersion = 'product-margin-20261118';
 const original = readFileSync(resolve(root, 'assets/index-BpABOaN7.js'), 'utf8');
 const sha = createHash('sha1').update(`blob ${Buffer.byteLength(original)}\0`).update(original).digest('hex');
 if (sha !== '28e83faab93c36b034d6bcfbcce2803cd0128412') {
@@ -36,7 +36,18 @@ replaceOnce('[e.ice,e.sweetness,e.extras?.join(`, `),e.lineNote].filter(Boolean)
 const queue = 'e.items.map(e=>`${e.qty}× ${e.name}${[e.ice,e.sweetness,e.extras?.join(`, `)].filter(Boolean).length?` (${[e.ice,e.sweetness,e.extras?.join(`, `)].filter(Boolean).join(` · `)})`:``}`).join(` · `)';
 replaceOnce(queue, 'e.items.map(e=>`${e.qty}× ${e.name}${tkItemSummary(e)?` (${tkItemSummary(e)})`:``}`).join(` · `)');
 
-bundle = `import {createCupUI as tkCreateCupUI,addProduct as tkAddProduct,normalizeLines as tkNormalizeLines,itemSummary as tkItemSummary} from "./order-cups-v1.js?v=${assetVersion}";\n` + bundle.replaceAll('\u2014', '-');
+replaceOnce('Z(`th`,{children:`Lãi`}),Z(`th`,{children:`Hiển thị`})',
+  'Z(`th`,{children:`Lãi`}),Z(`th`,{children:`Biên lợi nhuận`}),Z(`th`,{children:`Hiển thị`})');
+replaceOnce('Z(`td`,{className:`positive`,children:Z(`strong`,{children:Q(e.price-e.cost)})})',
+  'Z(`td`,{className:e.price<e.cost?`negative`:`positive`,children:Z(`strong`,{children:Q(e.price-e.cost)})}),Z(`td`,{className:`tk-product-margin ${tkGrossMarginPercent(e.price,e.cost)==null?`muted`:e.price<e.cost?`negative`:`positive`}`,children:Z(`strong`,{children:tkFormatGrossMargin(e.price,e.cost)})})');
+replaceOnce('Z(`div`,{className:`products-table-card`,children:',
+  'Z(`p`,{className:`tk-product-margin-note`,children:`Lãi và biên lợi nhuận tính theo giá tại quán, trước giảm giá, phí và chi phí vận hành. Biên (%) = lãi / giá bán × 100.`}),Z(`div`,{className:`products-table-card`,children:');
+replaceOnce('`Tỷ lệ cost tại quán (%)`,`Link ảnh`',
+  '`Tỷ lệ cost tại quán (%)`,`Biên lợi nhuận tại quán (%)`,`Link ảnh`');
+replaceOnce('e.price>0?Number((e.cost/e.price*100).toFixed(1)):0,e.imageUrl||``',
+  'e.price>0?Number((e.cost/e.price*100).toFixed(1)):0,tkGrossMarginPercent(e.price,e.cost)??``,e.imageUrl||``');
+
+bundle = `import {grossMarginPercent as tkGrossMarginPercent,formatGrossMargin as tkFormatGrossMargin} from "./product-margin-v1.js?v=${assetVersion}";\nimport {createCupUI as tkCreateCupUI,addProduct as tkAddProduct,normalizeLines as tkNormalizeLines,itemSummary as tkItemSummary} from "./order-cups-v1.js?v=${assetVersion}";\n` + bundle.replaceAll('\u2014', '-');
 writeFileSync(resolve(root, 'assets/staff-cup-notes-v1.js'), bundle);
 const indexPath = resolve(root, 'index.html');
 let html = readFileSync(indexPath, 'utf8');
@@ -48,5 +59,6 @@ if (!html.includes('/assets/order-cups-v1.css')) {
 }
 html = html.replace(/\/assets\/order-cups-v1\.css(?:\?v=[\w-]+)?/g, `/assets/order-cups-v1.css?v=${assetVersion}`);
 html = html.replace(/\/assets\/staff-cup-notes-v1\.js(?:\?v=[\w-]+)?/g, `/assets/staff-cup-notes-v1.js?v=${assetVersion}`);
+html = html.replace(/\/assets\/admin-ux\.css(?:\?v=[\w-]+)?/g, `/assets/admin-ux.css?v=${assetVersion}`);
 writeFileSync(indexPath, html);
 console.log('Built per-cup notes for staff; customer redirect and existing Operations files retained.');
