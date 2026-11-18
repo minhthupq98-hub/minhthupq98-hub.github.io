@@ -40,8 +40,9 @@
       <li><a href="#cong-thuc" data-nav="cong-thuc"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg><span>Công thức món</span><span class="nb" id="nb-cong-thuc"></span></a></li>
       <li><a href="#chi-phi" data-nav="chi-phi"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 2 2V2l-2 2-3-2-3 2-3-2-3 2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Chi phí</span><span class="nb" id="nb-chi-phi"></span></a></li>
       <li><a href="#doi-soat" data-nav="doi-soat"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M5 7l-3 7a3.5 3.5 0 0 0 6 0zM19 7l-3 7a3.5 3.5 0 0 0 6 0zM8 21h8"/></svg><span>Đối soát Grab</span><span class="nb" id="nb-doi-soat"></span></a></li>
+      <li><a href="#tro-ly" data-nav="tro-ly"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-3 2V11.5a8.5 8.5 0 0 1 17-1"/><path d="m19 2 1 3 3 1-3 1-1 3-1-3-3-1 3-1zM6 11h7M6 15h5"/></svg><span>Trợ lý quản lý</span><span class="nb" id="nb-tro-ly"></span></a></li>
       </ul>
-      <p class="muted small navhint kbd-only">Phím tắt: 1 đến 8 để chuyển mục, R để tải lại.</p>
+      <p class="muted small navhint kbd-only">Phím tắt: 1 đến 9 để chuyển mục, R để tải lại.</p>
     </nav>
     <div id="scrim" class="scrim" hidden></div>
     <div class="views">
@@ -62,15 +63,23 @@
     <div id="warnings"></div>
     <div id="kpis" class="kpis hero"></div>
     <div id="kpis2" class="kpis minor"></div>
+    <section class="card fnb-metrics"><h2>Hiệu quả kinh doanh F&amp;B</h2><p class="muted small">Theo kỳ đang chọn. Tỷ lệ giá vốn dùng giá vốn lưu trong đơn; lãi ròng tạm tính theo chi phí đã nhập.</p><div id="fnbKpis" class="kpis"></div></section>
     <div class="grid2">
       <section class="card"><h2>Doanh thu theo ngày</h2><p id="dayReadout" class="readout" aria-live="polite"></p><div id="days" class="chart"></div></section>
-      <section class="card"><h2>Kênh và tiền về</h2><div id="channels"></div></section>
+      <section class="card"><h2>Hiệu quả theo kênh</h2><p class="muted small">Sau giảm giá và giá vốn; phí Grab ước tính theo cài đặt. Chưa trừ chi phí vận hành.</p><div id="channels"></div></section>
     </div>
     <section class="card"><h2>Việc cần xử lý <span id="issueCount" class="pill"></span></h2><div id="issues"></div></section>
     <div class="grid2">
-      <section class="card"><h2>Món mang lãi nhiều nhất</h2><p class="muted small">Lãi gộp theo giá niêm yết trừ giá vốn, trước giảm giá cấp đơn.</p><div id="topItems"></div></section>
-      <section class="card"><h2>Món lãi thấp nhất</h2><p class="muted small">Xem lại giá, định lượng hoặc vai trò kéo khách trước khi ẩn.</p><div id="lowItems"></div></section>
+      <section class="card"><h2>Món mang lãi nhiều nhất</h2><p class="muted small">Xếp theo tổng lãi gộp. Biên % = lãi gộp / doanh thu món; trước giảm giá cấp đơn và phí sàn.</p><div id="topItems"></div></section>
+      <section class="card"><h2>Món mang lãi ít nhất</h2><p class="muted small">Xếp theo tổng lãi, không phải theo biên %. Xem cùng số lượng bán và định lượng trước khi đổi giá.</p><div id="lowItems"></div></section>
     </div>
+    <section class="card"><details><summary>Hiệu quả tất cả món: lãi mỗi phần, tỷ lệ giá vốn và biên lãi</summary><p class="muted small">Theo giá món lưu trong đơn. Món thiếu giá vốn chưa có biên %, không coi là lãi 100%.</p><div id="menuMetrics"></div></details></section>
+    <section class="card"><h2>Số liệu cần bổ sung khi vận hành</h2><p class="muted small">Nhập đủ lương, mặt bằng và chi phí vận hành để đọc biên lãi ròng. Cần phân loại chi phí cố định/biến đổi và giờ công trước khi tính hòa vốn, chi phí nhân sự hay năng suất ca. Tồn kho, hao hụt và lệch kiểm kê xem ở mục Kho &amp; giá vốn.</p></section>
+    </section>
+
+    <section class="view" data-view="tro-ly" aria-labelledby="h-tro-ly" hidden>
+      <h1 id="h-tro-ly" class="vtitle" tabindex="-1">Trợ lý quản lý</h1>
+      <section class="card finance-welcome"><h2>Một trợ lý cho toàn bộ admin</h2><p>Hỏi trực tiếp về tình hình tài chính của quán, món bán và biên lãi, thu chi, ca tiền mặt, kho, công thức, đối soát Grab và chốt kỳ.</p><button id="openFinanceAgent" type="button">Mở trợ lý quản lý</button><p class="muted small">Ví dụ: “Tháng này lãi thế nào?”, “Món nào nên xem lại giá?”, “Chi tiền điện hôm nay 300.000đ”. AI đọc số thật và lập nháp khoản chi; bạn soát rồi bấm Ghi. Quét hóa đơn và nhập công thức vẫn ở mục Nhập kho.</p></section>
     </section>
 
     <section class="view" data-view="ca" aria-labelledby="h-ca" hidden>

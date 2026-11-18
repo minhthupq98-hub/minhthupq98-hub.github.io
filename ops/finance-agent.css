@@ -1,0 +1,52 @@
+.tk-finance-launcher{position:fixed;right:20px;bottom:max(18px,env(safe-area-inset-bottom));z-index:50;border:1px solid #6b4a32;border-radius:999px;background:#6b4a32;color:#fff;padding:12px 18px;min-height:48px;font:600 15px/1.4 system-ui;box-shadow:0 4px 20px #2b242026;cursor:pointer}
+.tk-finance-launcher[hidden]{display:none!important}
+.tk-finance-launcher.tk-staff-agent{right:auto;left:16px;bottom:max(18px,env(safe-area-inset-bottom))}
+#tkFinanceAgent{--ai-ink:#2b2420;--ai-muted:#66594f;--ai-brand:#6b4a32;--ai-line:#e8e0d8;box-sizing:border-box;color:var(--ai-ink);background:#fff;border:1px solid var(--ai-line);border-radius:18px;width:min(640px,calc(100% - 24px));height:min(830px,calc(100dvh - 32px));max-width:none;max-height:calc(100dvh - 32px);padding:0;margin:auto;font:15px/1.5 system-ui,-apple-system,sans-serif;overflow:hidden;z-index:10000}
+#tkFinanceAgent[open]{display:flex;flex-direction:column}
+#tkFinanceAgent::backdrop{background:#241b1480}
+#tkFinanceAgent *{box-sizing:border-box}
+#tkFinanceAgent h2,#tkFinanceAgent h3,#tkFinanceAgent p{margin:0;font-family:inherit}
+#tkFinanceAgent h2{font-size:20px;line-height:1.3}
+#tkFinanceAgent h3{font-size:16px}
+#tkFinanceAgent button,#tkFinanceAgent a,#tkFinanceAgent input,#tkFinanceAgent select,#tkFinanceAgent textarea{font:inherit;min-height:44px}
+#tkFinanceAgent button{cursor:pointer;border:1px solid var(--ai-line);border-radius:10px;padding:8px 12px;background:#fff;color:var(--ai-brand);transition:background .15s}
+#tkFinanceAgent button:hover{background:#f7f3ee}
+#tkFinanceAgent button:disabled{opacity:.6;cursor:wait}
+#tkFinanceAgent :focus-visible,.tk-finance-launcher:focus-visible{outline:3px solid #996323;outline-offset:2px}
+#tkFinanceAgent .tk-ai-head{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--ai-line);padding:16px;flex-shrink:0;background:#fff}
+#tkFinanceAgent .tk-ai-head p{font-size:12px;color:var(--ai-muted);margin-top:4px}
+#tkFinanceAgent .tk-ai-close{flex-shrink:0;color:var(--ai-ink);font-weight:600}
+#tkFinanceAgent .tk-ai-scroll{padding:16px;overflow:auto;overscroll-behavior:contain;flex:1;min-height:0;scroll-padding:12px}
+#tkFinanceAgent .tk-ai-intro{color:var(--ai-muted);font-size:14px;margin-bottom:12px}
+#tkFinanceAgent label{display:block;font-size:13px;font-weight:600;margin:0;color:var(--ai-ink)}
+#tkFinanceAgent input,#tkFinanceAgent select,#tkFinanceAgent textarea{display:block;width:100%;min-width:0;border:1px solid #c7b9ad;border-radius:8px;padding:8px;background:#fff;color:var(--ai-ink);margin:4px 0 0;font-size:16px}
+#tkFinanceAgent .tk-ai-range,#tkFinanceAgent .tk-ai-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+#tkFinanceAgent .tk-ai-prompts,#tkFinanceAgent .tk-ai-links{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+#tkFinanceAgent .tk-ai-prompts button{font-size:13px;background:#f7f3ee}
+#tkFinanceAgent .tk-ai-message{border:1px solid var(--ai-line);border-radius:12px;padding:12px;margin:12px 0;background:#fff;overflow-wrap:anywhere}
+#tkFinanceAgent .tk-ai-user{background:#f7f3ee;margin-left:24px}
+#tkFinanceAgent .tk-ai-message>b{display:block;font-size:12px;color:var(--ai-muted);margin-bottom:6px}
+#tkFinanceAgent .tk-ai-text{white-space:pre-wrap;font-size:15px}
+#tkFinanceAgent .tk-ai-source{margin-top:12px;font-size:12px;color:var(--ai-muted)}
+#tkFinanceAgent .tk-ai-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+#tkFinanceAgent .tk-ai-facts>div{padding:8px;border-radius:8px;background:#f7f3ee}
+#tkFinanceAgent .tk-ai-facts span{display:block;font-size:11px;color:var(--ai-muted)}
+#tkFinanceAgent .tk-ai-facts strong{font-size:14px;font-variant-numeric:tabular-nums}
+#tkFinanceAgent details{font-size:12px;color:var(--ai-muted)}
+#tkFinanceAgent details p{margin-top:6px}
+#tkFinanceAgent summary{cursor:pointer;min-height:32px;padding-top:6px}
+#tkFinanceAgent a{display:inline-flex;align-items:center;padding:8px;color:var(--ai-brand);text-underline-offset:3px}
+#tkFinanceAgent .tk-ai-draft{border:1px solid #cfb28b;border-radius:10px;padding:12px;margin-top:12px;background:#fff9f1}
+#tkFinanceAgent .tk-ai-draft>p{font-size:12px;color:var(--ai-muted);margin:6px 0 12px}
+#tkFinanceAgent .tk-ai-draft label{margin:8px 0}
+#tkFinanceAgent .tk-ai-draft-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#tkFinanceAgent .tk-ai-draft [type=submit],#tkFinanceAgent .tk-ai-compose [type=submit]{background:var(--ai-brand);border-color:var(--ai-brand);color:#fff}
+#tkFinanceAgent .tk-ai-compose{padding:12px 16px max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--ai-line);background:#fff;flex-shrink:0}
+#tkFinanceAgent .tk-ai-compose>div{display:flex;gap:8px;align-items:flex-end}
+#tkFinanceAgent .tk-ai-compose textarea{resize:none;max-height:140px;min-height:64px}
+#tkFinanceAgent .tk-ai-compose p{font-size:11px;color:var(--ai-muted);margin-top:6px}
+#tkFinanceAgent .tk-ai-status{font-size:14px;color:var(--ai-muted)}
+#tkFinanceAgent .tk-ai-error{color:#a33725;font-size:14px;margin-top:8px}
+@media(max-width:480px){#tkFinanceAgent{width:100%;height:100dvh;max-height:100dvh;border:0;border-radius:0}#tkFinanceAgent .tk-ai-head{padding-top:max(12px,env(safe-area-inset-top));padding-bottom:12px}#tkFinanceAgent .tk-ai-facts{grid-template-columns:1fr}#tkFinanceAgent .tk-ai-facts>div{display:flex;justify-content:space-between;align-items:center;gap:8px}#tkFinanceAgent .tk-ai-fields{grid-template-columns:1fr}.tk-finance-launcher{font-size:13px;padding:10px 14px;right:12px}}
+@media(prefers-reduced-motion:reduce){#tkFinanceAgent button{transition:none}}
+@media print{#tkFinanceAgent,.tk-finance-launcher{display:none!important}}
