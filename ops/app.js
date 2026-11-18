@@ -5,12 +5,14 @@ import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './
 import { buildReconcileReport } from './lib/reconcile-report.js';
 import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js';
 import { initAssistant, refreshAssistant } from './assistant.js';
+import { mountFinanceAgent } from './finance-agent.js';
 import { SupabaseInventoryStore, PURCHASE_UNITS, MEASURES, measureSize, MOVE_LABEL, parseQtyInput, weightedAvgCost, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js';
 
 const OWN_KEY = 'the-khe-ops-session';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const vnd = (n) => `${new Intl.NumberFormat('vi-VN').format(Number(n) || 0)}đ`; // Number(-0)||0 = 0, hết "-0đ"
+const percent = (n) => n == null ? 'Chưa đủ dữ liệu' : `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(n)}%`;
 const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400e3).toISOString().slice(0, 10);
 const fmtDate = (iso) => new Date(Date.parse(iso) + 7 * 3600e3).toISOString().slice(0, 10);
@@ -101,7 +103,7 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- Ticket 7: danh mục bên trái, mỗi mục một địa chỉ #... (nút Back dùng được) ----------
 const VIEWS = [...document.querySelectorAll('.view')].map((v) => v.dataset.view);
-const PERIOD_VIEWS = new Set(['tong-quan', 'kho', 'chi-phi', 'doi-soat']);
+const PERIOD_VIEWS = new Set(['tong-quan', 'kho', 'chi-phi', 'doi-soat', 'tro-ly']);
 const currentView = () => (VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : VIEWS[0]);
 
 function showView(moveFocus) {
@@ -235,25 +237,35 @@ function render(d, settings) {
   const kpiHtml = (cards) => cards.map(([l, v, s]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s}</div>`).join('');
   $('kpis').innerHTML = kpiHtml(hero);
   $('kpis2').innerHTML = kpiHtml(minor);
+  $('fnbKpis').innerHTML = kpiHtml([
+    ['Biên lãi gộp', percent(k.grossMarginPct), '<span class="muted small">Lãi gộp / doanh thu sau giảm giá</span>'],
+    ['Tỷ lệ giá vốn', percent(k.foodCostPct), '<span class="muted small">Theo giá vốn lưu trong đơn</span>'],
+    ['Biên lãi ròng · tạm tính', percent(k.netMarginPct), '<span class="muted small">Theo chi phí đã nhập, chưa xác nhận đủ</span>'],
+    ['Tỷ lệ chi phí đã nhập', percent(k.expensePct), '<span class="muted small">Chưa bao gồm giá vốn và phí Grab</span>'],
+    ['Tỷ lệ giảm giá', percent(k.discountPct), '<span class="muted small">Giảm giá / doanh thu trước giảm</span>'],
+    ['Tỷ lệ hủy đơn', percent(k.cancelPct), `<span class="muted small">${k.cancelledOrders} / ${k.totalOrders} đơn tạo trong kỳ</span>`],
+  ]);
 
   renderDays(d.days);
 
-  $('channels').innerHTML = table([['Kênh'], ['Đơn', 1], ['Doanh thu', 1], ['Lãi gộp', 1]],
-    d.channels.map((c) => [esc(c.label), c.orders, vnd(c.revenue), vnd(c.revenue - c.cost)]));
+  $('channels').innerHTML = table([['Kênh'], ['Đơn', 1], ['Doanh thu', 1], ['Lãi sau phí sàn', 1], ['Biên %', 1]],
+    d.channels.map((c) => [esc(c.label), c.orders, vnd(c.revenue), vnd(c.contribution), percent(c.marginPct)]));
 
   $('issueCount').textContent = d.issues.length;
   badge('tong-quan', d.issues.length);
   const issueRows = d.issues.map((i) => [`#${esc(i.orderNumber)}`, esc(i.businessDate), esc(i.channel), `<b>${KIND[i.kind]}</b> ${esc(i.label)}`, vnd(i.amount)]);
   $('issues').innerHTML = d.issues.length ? table([['Đơn'], ['Ngày'], ['Kênh'], ['Vấn đề'], ['Tiền', 1]], issueRows) : '<p class="muted">Không có đơn lệch trong kỳ.</p>';
 
-  const itemRows = (xs) => xs.map((i) => [esc(i.name), i.qty, vnd(i.listRevenue), vnd(i.margin)]);
-  const head = [['Món'], ['SL', 1], ['Doanh thu', 1], ['Lãi gộp', 1]];
+  const itemRows = (xs) => xs.map((i) => [esc(i.name), i.qty, vnd(i.listRevenue), vnd(i.margin), i.missingCost ? '<span class="tag">Thiếu giá vốn</span>' : `<span class="${i.marginPct < 0 ? 'down' : ''}">${percent(i.marginPct)}</span>`]);
+  const head = [['Món'], ['SL', 1], ['Doanh thu', 1], ['Lãi gộp', 1], ['Biên %', 1]];
   // Chia đôi danh sách đã xếp theo lãi: nửa trên là bán chạy, phần còn lại (đảo ngược) là lãi thấp.
   const nTop = Math.min(5, Math.ceil(d.items.length / 2));
   $('topItems').innerHTML = table(head, itemRows(d.items.slice(0, nTop)));
   $('lowItems').innerHTML = d.items.length > nTop
     ? table(head, itemRows(d.items.slice(nTop).reverse().slice(0, 5)))
     : '<p class="muted">Chưa đủ món để so sánh.</p>';
+  $('menuMetrics').innerHTML = table([['Món'], ['SL', 1], ['Lãi / phần', 1], ['Giá vốn %', 1], ['Biên lãi %', 1]],
+    d.items.map((i) => [esc(i.name), i.qty, vnd(i.profitPerItem), percent(i.costPct), percent(i.marginPct)]));
 
   $('expenses').innerHTML = d.expenseByCategory.length
     ? table([['Nhóm'], ['Số khoản', 1], ['Tổng', 1]], d.expenseByCategory.map((e) => [esc(e.category), e.count, vnd(e.amount)]))
@@ -845,6 +857,9 @@ function start() {
   client.useSession(token);
   load();
 }
+
+const financeAgent = mountFinanceAgent({ client, getRange: currentRange, afterWrite: load });
+$('openFinanceAgent').addEventListener('click', () => financeAgent.open());
 
 fillMonths();
 $('month').value = today().slice(0, 7);

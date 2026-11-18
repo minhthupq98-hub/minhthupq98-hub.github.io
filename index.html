@@ -39,6 +39,10 @@
           staffApp.crossOrigin = "anonymous";
           staffApp.src = "/assets/staff-cup-notes-v1.js?v=product-margin-20261118";
           document.head.appendChild(staffApp);
+          var financeAgent = document.createElement("script");
+          financeAgent.type = "module";
+          financeAgent.src = "/ops/finance-agent.js?v=finance-agent-20261118";
+          document.head.appendChild(financeAgent);
         }
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", bootStaff, { once: true });

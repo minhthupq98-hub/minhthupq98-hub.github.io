@@ -29,6 +29,10 @@ export const shopDate = (iso) => new Date(Date.parse(iso) + 7 * 3600e3).toISOStr
 
 const inRange = (date, r) => date >= r.from && date < r.to;
 const pct = (now, before) => (before ? Math.round(((now - before) / before) * 1000) / 10 : null);
+// Tỷ trọng theo doanh thu, không phải tỷ lệ tăng trên giá vốn. Không có mẫu số
+// thì không biến thành 0% hay Infinity (đặc biệt với món tặng và kỳ chưa bán).
+export const ratioPercent = (amount, base) => Number.isFinite(amount) && Number.isFinite(base) && base > 0
+  ? Math.round(amount / base * 1000) / 10 : null;
 
 function summarize(orders, grabFeeRate) {
   const done = orders.filter((o) => o.status === 'completed');
@@ -102,12 +106,14 @@ export function buildOwnerDashboard({ orders, expenses = [], range, now, syncedA
   const expenseTotal = sum(exp, (e) => e.amount);
 
   const done = cur.filter((o) => o.status === 'completed');
-  const channels = [...groupBy(done, (o) => o.channelLabel)].map(([label, os]) => ({
-    label,
-    orders: os.length,
-    revenue: sum(os, (o) => o.netRevenue),
-    cost: sum(os, (o) => o.costOfGoods),
-  })).sort((a, b) => b.revenue - a.revenue);
+  const channels = [...groupBy(done, (o) => o.channelLabel)].map(([label, os]) => {
+    const revenue = sum(os, (o) => o.netRevenue);
+    const cost = sum(os, (o) => o.costOfGoods);
+    const feeEstimate = Math.round(sum(os.filter((o) => o.channel === 'grab'), (o) => o.netRevenue) * grabFeeRate / 100);
+    return { label, orders: os.length, revenue, cost, feeEstimate,
+      contribution: revenue - cost - feeEstimate,
+      marginPct: ratioPercent(revenue - cost - feeEstimate, revenue) };
+  }).sort((a, b) => b.revenue - a.revenue);
 
   const days = [];
   for (let d = range.from; d < range.to && d <= today; d = addDays(d, 1)) {
@@ -118,13 +124,18 @@ export function buildOwnerDashboard({ orders, expenses = [], range, now, syncedA
   const itemMap = new Map();
   for (const o of done) for (const it of o.items) {
     const key = it.id || it.name;
-    const cur0 = itemMap.get(key) ?? { name: it.name, category: it.category, qty: 0, listRevenue: 0, cost: 0 };
+    const cur0 = itemMap.get(key) ?? { name: it.name, category: it.category, qty: 0, listRevenue: 0, cost: 0, missingCost: false };
     cur0.qty += it.qty;
     cur0.listRevenue += it.qty * it.unitPrice;
     cur0.cost += it.qty * it.unitCost;
+    if (it.qty > 0 && it.unitCost <= 0) cur0.missingCost = true;
     itemMap.set(key, cur0);
   }
-  const items = [...itemMap.values()].map((i) => ({ ...i, margin: i.listRevenue - i.cost }))
+  const items = [...itemMap.values()].map((i) => ({ ...i, margin: i.listRevenue - i.cost,
+    marginPct: i.missingCost ? null : ratioPercent(i.listRevenue - i.cost, i.listRevenue),
+    costPct: i.missingCost ? null : ratioPercent(i.cost, i.listRevenue),
+    profitPerItem: i.qty > 0 ? Math.round((i.listRevenue - i.cost) / i.qty) : null,
+  }))
     .sort((a, b) => b.margin - a.margin);
 
   const expenseByCategory = [...groupBy(exp, (e) => e.category)].map(([category, es]) => ({ category, amount: sum(es, (e) => e.amount), count: es.length }))
@@ -138,6 +149,16 @@ export function buildOwnerDashboard({ orders, expenses = [], range, now, syncedA
   if (noCost) warnings.push(`${noCost} đơn chưa có giá vốn, lãi đang bị tính cao.`);
   if (range.to > today) warnings.push('Kỳ đang chạy, số còn thay đổi.');
 
+  const metrics = (s, expense) => ({
+    grossMarginPct: ratioPercent(s.grossProfit, s.revenue),
+    netMarginPct: ratioPercent(s.contribution - expense, s.revenue),
+    foodCostPct: ratioPercent(s.cost, s.revenue),
+    expensePct: ratioPercent(expense, s.revenue),
+    discountPct: ratioPercent(s.discounts, s.revenue + s.discounts),
+  });
+  const cancelled = cur.filter((o) => o.status === 'cancelled').length;
+  const noItemCost = items.filter((i) => i.missingCost).length;
+  if (noItemCost) warnings.push(`${noItemCost} món đã bán còn dòng thiếu giá vốn; chưa tính biên % của các món đó.`);
   return {
     range,
     previousRange: prev,
@@ -145,8 +166,12 @@ export function buildOwnerDashboard({ orders, expenses = [], range, now, syncedA
     syncedAt,
     sourceStatus,
     lastOrderAt: cur.reduce((m, o) => (o.updatedAt > m ? o.updatedAt : m), ''),
-    kpi: { ...k, expenses: expenseTotal, netProfit: k.contribution - expenseTotal },
-    previous: { ...p, expenses: sum(expPrev, (e) => e.amount), netProfit: p.contribution - sum(expPrev, (e) => e.amount) },
+    kpi: { ...k, expenses: expenseTotal, netProfit: k.contribution - expenseTotal, ...metrics(k, expenseTotal),
+      cancelledOrders: cancelled, totalOrders: cur.length, cancelPct: ratioPercent(cancelled, cur.length),
+      unpaidAmount: sum(done.filter((o) => o.paymentStatus === 'unpaid' && o.channel !== 'grab'), (o) => o.netRevenue),
+      itemsSold: sum(items, (i) => i.qty),
+    },
+    previous: { ...p, expenses: sum(expPrev, (e) => e.amount), netProfit: p.contribution - sum(expPrev, (e) => e.amount), ...metrics(p, sum(expPrev, (e) => e.amount)) },
     change: {
       revenue: pct(k.revenue, p.revenue),
       orders: pct(k.orders, p.orders),

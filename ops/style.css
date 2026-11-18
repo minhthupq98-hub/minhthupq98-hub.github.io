@@ -1,7 +1,9 @@
 :root{--bg:#f7f3ee;--card:#fff;--ink:#2b2420;--muted:#7a6d64;--line:#e8e0d8;--brand:#6b4a32;--good:#2f7d4f;--bad:#b3412e;--warn:#fff4dc}
+.fnb-metrics>p{margin-bottom:14px}.fnb-metrics .kpi{background:var(--bg)}.fnb-metrics .kpis{margin-bottom:0}.finance-welcome{max-width:760px}.finance-welcome>p{margin:12px 0}.finance-welcome>button{margin:4px 0 8px}.views{padding-bottom:76px}
 *{box-sizing:border-box}body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
 .top{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
 .top-actions{display:flex;gap:12px;align-items:center}
+@media(max-width:360px){.top{padding:10px;gap:8px}.top .brand{gap:7px;font-size:13px}.top-actions{gap:6px;font-size:13px}.top-actions button{padding:8px}.top .menu{width:40px;min-width:40px;padding:8px}}
 main{max-width:1100px;margin:0 auto;padding:16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
 .narrow{max-width:380px;margin:40px auto}
