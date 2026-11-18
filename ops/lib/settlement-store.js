@@ -1,8 +1,8 @@
 // Sổ đối soát Grab và chốt kỳ lưu trên Supabase (ticket 3).
 // Đọc bảng ops_* qua RLS; GHI chỉ qua hàm RPC ops_* (kiểm chủ quán, idempotency,
 // khóa kỳ, nhật ký nằm trong database, trình duyệt không vượt qua được).
-import { parseGrabSettlementCsv } from './grab-csv.js';
-import { periodOf } from './period.js';
+import { parseGrabSettlementCsv } from './grab-csv.js?v=receipts-20261118';
+import { periodOf } from './period.js?v=receipts-20261118';
 
 export async function sha256Hex(text) {
   const buf = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));

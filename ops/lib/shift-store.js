@@ -1,7 +1,7 @@
 // Ca và tiền mặt tại két (ticket 4). Đọc bảng ops_* qua RLS, ghi qua RPC ops_*.
 // Số chốt ca chính thức do database tính; hàm shiftPreview chỉ để hiện số tạm trong ca.
 
-export const MOVE_KIND = { expense: 'Chi phí', withdraw: 'Rút tiền', deposit: 'Nộp thêm' };
+export const MOVE_KIND = { expense: 'Chi phí', withdraw: 'Rút tiền', deposit: 'Nộp thêm', purchase: 'Chi hóa đơn mua hàng' };
 
 // Cùng điều kiện với ops_close_shift: đơn hoàn tất, đã thu, tiền mặt, không phải Grab, tạo trong ca.
 export function isShiftCashSale(o, openedAt, until = null) {

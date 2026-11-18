@@ -1,6 +1,7 @@
-import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js';
-import { SupabaseClient } from './lib/supabase-order-source.js';
-import { monthRange } from './lib/owner-dashboard.js';
+import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js?v=receipts-20261118';
+import { SupabaseClient } from './lib/supabase-order-source.js?v=receipts-20261118';
+import { monthRange } from './lib/owner-dashboard.js?v=receipts-20261118';
+import { mountReceiptAssistant } from './receipt-assistant.js?v=receipts-20261118';
 
 const today = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
 const vnd = (v) => `${new Intl.NumberFormat('vi-VN').format(v)}đ`;
@@ -42,6 +43,7 @@ export function mountFinanceAgent({ client = new SupabaseClient({ url: SUPABASE_
     <div class="tk-ai-scroll"><p class="tk-ai-intro">Hỏi về doanh thu, thu chi, lãi món, ca và tiền két, kho, công thức, Grab hoặc chốt kỳ. AI có thể lập nháp khoản chi để bạn soát và ghi.</p>
     <form class="tk-ai-range"><label>Từ ngày<input type="date" name="from" required></label><label>Đến hết ngày<input type="date" name="until" required></label></form>
     <div class="tk-ai-prompts" aria-label="Câu hỏi gợi ý"></div>
+    <details class="rc-chat-panel"><summary>Đính kèm hóa đơn: AI chia nhóm chi và nhập kho</summary><h3>Quét hóa đơn ngay trong trợ lý</h3><p class="tk-ai-intro">AI phân nhóm từng dòng. Nguyên liệu, bao bì vào kho; khoản vận hành ghi chi phí. Một lần xác nhận ghi cả chứng từ và tiền chi.</p><div class="tk-ai-receipts"></div></details>
     <div class="tk-ai-messages" role="log" aria-label="Hội thoại với trợ lý"></div>
     <p class="tk-ai-status" role="status" aria-live="polite"></p><p class="tk-ai-error" role="alert"></p></div>
     <form class="tk-ai-compose"><label for="tkFinanceQuestion">Bạn cần hỗ trợ gì?</label><div><textarea id="tkFinanceQuestion" rows="2" maxlength="3000" placeholder="Ví dụ: Tháng này lãi thế nào? Hoặc: Chi điện hôm nay 300.000đ" required></textarea><button type="submit">Gửi</button></div><p>AI đọc số và lập nháp. Chỉ ghi khi bạn bấm xác nhận.</p></form>`;
@@ -54,12 +56,21 @@ export function mountFinanceAgent({ client = new SupabaseClient({ url: SUPABASE_
   const submit = compose.querySelector('button');
   const history = [];
   let lastToken = null, returnFocus = null, busy = false;
+  let receiptToken = null;
+  const receipt = mountReceiptAssistant(dialog.querySelector('.tk-ai-receipts'), { client, afterWrite,
+    isCurrentSession: () => { const token = readSession(); if (!token) return false; if (!receiptToken) receiptToken = token; client.useSession(token); return token === receiptToken; } });
+  const receiptDetails = dialog.querySelector('.rc-chat-panel');
+  receiptDetails.addEventListener('toggle', () => {
+    dialog.classList.toggle('tk-ai-receipt-mode', receiptDetails.open);
+    dialog.querySelector('#tkFinanceTitle').textContent = receiptDetails.open ? 'Quét hóa đơn' : 'Trợ lý quản lý';
+    receiptDetails.querySelector('summary').textContent = receiptDetails.open ? '← Quay lại hỏi AI' : 'Đính kèm hóa đơn: AI chia nhóm chi và nhập kho';
+  });
   const plusDay = (date, n) => new Date(Date.parse(`${date}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
   const syncRange = () => { const r = getRange(); from.value = r.from; until.value = plusDay(r.to, -1); };
   const available = () => Boolean(readSession()) && !document.querySelector('#login:not([hidden])');
   const updateAvailability = () => {
     launcher.hidden = !available();
-    if (!available()) { if (dialog.open) dialog.close(); messages.replaceChildren(); history.splice(0); lastToken = null; }
+    if (!available()) { if (dialog.open) dialog.close(); messages.replaceChildren(); history.splice(0); lastToken = null; receiptToken = null; receipt.clear(); }
   };
   const addMessage = (role, text) => {
     const box = node('section', null, `tk-ai-message tk-ai-${role}`);
