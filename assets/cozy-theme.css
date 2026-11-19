@@ -1,0 +1,157 @@
+/* THE KHE Cozy UI layer (Warm Minimalism + Soft Claymorphism).
+   Screen only: the bill paper and print output keep their original look. */
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
+
+@media screen {
+  :root {
+    --ink: #3d2e22;
+    --olive: #3f6b34;
+    --olive-dark: #2f5527;
+    --lime: #e3eeda;
+    --cream: #f6eee3;
+    --paper: #fffdf8;
+    --line: rgba(122, 90, 60, .13);
+    --muted: #7a6656;
+    --tk-peach: #f6c9a8;
+    --tk-peach-2: #fbe3d0;
+    --tk-peach-ink: #a4502a;
+    --tk-sage-2: #e3eeda;
+    --tk-butter-2: #fbf0d2;
+    --tk-clay: 0 1px 0 rgba(255,255,255,.9) inset, 0 -3px 0 rgba(122,90,60,.06) inset, 0 10px 24px -12px rgba(110,72,40,.28), 0 2px 6px rgba(110,72,40,.06);
+    --tk-clay-hi: 0 1px 0 rgba(255,255,255,.9) inset, 0 -3px 0 rgba(122,90,60,.06) inset, 0 22px 40px -16px rgba(110,72,40,.34), 0 4px 10px rgba(110,72,40,.08);
+    --tk-ease: cubic-bezier(.22, 1.2, .36, 1);
+  }
+
+  body {
+    font-family: Nunito, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .3; mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .33 0 0 0 0 .22 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  #root { position: relative; z-index: 1; }
+
+  /* Display type: Baloo 2 has full Vietnamese diacritics. */
+  h1, h2, h3, .brand-wrap h1, .metric-grid strong, .card-title h2, .card-title h3 {
+    font-family: "Baloo 2", Nunito, sans-serif !important;
+    letter-spacing: -.005em;
+  }
+  .brand-wrap h1 { letter-spacing: .08em; font-weight: 700; }
+  /* Replace the old serif display face (no full Vietnamese support in Georgia fallback styles). */
+  .auth-card h1,
+  .birthday-avatar,
+  .birthday-card-head h3,
+  .birthday-person>aside b,
+  .brand-wrap h1,
+  .card-title h3,
+  .customize-title h2,
+  .empty-cart h3,
+  .expense-total strong,
+  .grand-total span,
+  .membership-hero h3,
+  .metric-grid article>strong,
+  .online-settings-head h3,
+  .pin-change-sheet h2,
+  .pin-reset-head h3,
+  .profit-formula strong,
+  .queue-number strong,
+  .queue-summary strong,
+  .report-empty h4,
+  h2 {
+    font-family: "Baloo 2", Nunito, sans-serif !important;
+  }
+
+  /* Top bar */
+  .topbar { background: rgba(255, 249, 241, .86); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .brand-mark { background: var(--olive); border-radius: 16px; box-shadow: var(--tk-clay); }
+  .main-nav { background: #f1e6d8; border-radius: 999px; padding: 5px; box-shadow: inset 0 2px 6px rgba(110,72,40,.08); }
+  .main-nav button { border-radius: 999px; color: var(--muted); transition: color .3s, background .35s var(--tk-ease), box-shadow .35s var(--tk-ease); }
+  .main-nav button.active { background: var(--tk-peach-2); color: var(--ink); box-shadow: 0 1px 0 #fff inset, 0 6px 14px -8px rgba(164,80,42,.6); }
+  .history-button, .sync-status, .logout-button, .notification-button { border-radius: 999px; box-shadow: var(--tk-clay); border-color: var(--line); }
+
+  /* Large cards: bento look */
+  .product-card, .metric-grid article, .report-card, .queue-card, .queue-summary article, .members-card,
+  .products-table-card, .birthday-card, .online-settings-card, .auth-card, .member-guide, .add-product-card,
+  .pin-reset-card, .issued-pin-card, .date-picker {
+    border-radius: 26px !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: var(--tk-clay) !important;
+  }
+  .product-card, .metric-grid article, .queue-card, .queue-summary article, .report-card {
+    transition: transform .35s var(--tk-ease), box-shadow .35s var(--tk-ease);
+  }
+  .product-card:hover, .metric-grid article:hover, .queue-card:hover, .queue-summary article:hover {
+    transform: translateY(-4px); box-shadow: var(--tk-clay-hi) !important;
+  }
+  .product-card:active { transform: translateY(1px) scale(.985); }
+  .metric-grid article:not(.profit-card):not(.danger):nth-child(4n+1) { background: var(--tk-peach-2); }
+  .metric-grid article:not(.profit-card):not(.danger):nth-child(4n+2) { background: var(--tk-sage-2); }
+  .metric-grid article:not(.profit-card):not(.danger):nth-child(4n+3) { background: var(--tk-butter-2); }
+  .metric-grid article:not(.profit-card):not(.danger):nth-child(4n) { background: #f0e8f7; }
+  .metric-grid .profit-card { background: linear-gradient(150deg, #4c7c3f, #3f6b34) !important; border-color: transparent !important; }
+  .metric-grid .danger { background: linear-gradient(150deg, #c8574a, #a8463b) !important; border-color: transparent !important; }
+  .metric-icon { border-radius: 14px; background: rgba(255,255,255,.7); }
+
+  /* Order panel */
+  .order-panel { background: rgba(255, 253, 248, .94); box-shadow: -14px 0 40px -18px rgba(110,72,40,.28); }
+  .cart-line { border-radius: 18px; }
+
+  /* Pills, chips, segmented controls */
+  .category-tabs button, .modifier-targets button, .address-label-presets button {
+    border-radius: 999px; border-color: var(--line); box-shadow: 0 1px 0 #fff inset, 0 4px 10px -6px rgba(110,72,40,.25);
+    transition: background .3s, transform .25s var(--tk-ease);
+  }
+  .category-tabs button:hover { transform: translateY(-2px); }
+  .category-tabs button.active { background: var(--tk-peach-2); color: var(--ink); border-color: transparent; box-shadow: 0 1px 0 #fff inset, 0 6px 14px -8px rgba(164,80,42,.6); }
+  .category-tabs button { white-space: nowrap; }
+  .channel-switch, .mini-switch, .period-switch, .pin-mode-switch { border-radius: 999px; background: #f1e6d8; padding: 4px; }
+  .channel-switch button, .mini-switch button, .period-switch button, .pin-mode-switch button { border-radius: 999px; }
+  .card-title > span, .channel-badge, .queue-meta span, .member-tier { border-radius: 999px; }
+
+  /* Buttons */
+  .checkout-button, .primary-small, .report-empty button, .member-order-button, .save-online-settings,
+  .add-product-card > button, .auth-card form > button, .setup-card > button:not(.auth-switch), .customer-link-row button, .customer-link-row a {
+    border-radius: 999px !important;
+    background: var(--olive) !important;
+    box-shadow: 0 -3px 0 rgba(0,0,0,.18) inset, 0 10px 20px -10px rgba(63,107,52,.7);
+    transition: transform .25s var(--tk-ease), box-shadow .25s;
+  }
+  .checkout-button:hover, .primary-small:hover, .member-order-button:hover { transform: translateY(-2px); }
+  .checkout-button:active, .primary-small:active { transform: translateY(1px) scale(.98); }
+  .queue-actions button, .row-actions button, .delete-product, .qty button, .expense-line button { border-radius: 14px; box-shadow: 0 1px 0 #fff inset, 0 4px 10px -6px rgba(110,72,40,.3); }
+  .qty button { border-radius: 50%; }
+
+  /* Inputs */
+  .searchbox, .member-search { border-radius: 999px; box-shadow: var(--tk-clay); border-color: var(--line); }
+  .auth-card input, .note-field input, .customer-field input, .expense-form input, .expense-form select,
+  .online-settings-grid input, .member-birthday-input, .add-product-card input, .add-product-card select,
+  .money-input, .product-description-input, .discount-row > .discount-control, .pin-change-sheet input {
+    border-radius: 14px; border-color: var(--line);
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--tk-peach-ink); outline-offset: 2px; }
+
+  /* Soft tinted boxes */
+  .loyalty-box, .profit-formula, .payment-summary, .member-points, .customer-order-entry, .online-order-link { border-radius: 18px; }
+  .growth-up, .growth-new { background: var(--tk-sage-2); border-radius: 999px; }
+  .growth-down { background: #f6dcd5; border-radius: 999px; }
+  .toast { border-radius: 999px; background: #3d2e22; box-shadow: var(--tk-clay-hi); }
+  .mobile-cart-toggle { border-radius: 28px 28px 0 0; }
+
+  .tk-finance-launcher { background: var(--olive) !important; border-color: var(--olive) !important; font-family: "Baloo 2", Nunito, sans-serif !important; box-shadow: 0 -3px 0 rgba(0,0,0,.18) inset, 0 14px 26px -12px rgba(63,107,52,.7) !important; }
+  /* Page change: soft morph instead of a hard swap */
+  .tk-morph { animation: tk-morph .45s var(--tk-ease); }
+  @keyframes tk-morph { from { opacity: 0; transform: translateY(8px) scale(.985); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+}
+
+@media screen and (prefers-reduced-motion: reduce) {
+  .product-card, .metric-grid article, .queue-card, .queue-summary article, .report-card, .main-nav button,
+  .category-tabs button, .checkout-button, .primary-small { transition: none !important; }
+  .product-card:hover, .metric-grid article:hover, .queue-card:hover, .queue-summary article:hover { transform: none; }
+  .tk-morph { animation: none; }
+}
+
+@media print {
+  body::before { display: none; }
+}

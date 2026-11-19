@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#123d28" />
+    <meta name="theme-color" content="#f6eee3" />
     <meta name="description" content="Phần mềm order và tính lợi nhuận cho The Khe" />
     <title>THE KHE · Quản lý cửa hàng</title>
     <script>
@@ -34,6 +34,14 @@
           cupStylesheet.rel = "stylesheet";
           cupStylesheet.href = "/assets/order-cups-v1.css?v=product-margin-20261118";
           document.head.appendChild(cupStylesheet);
+          var cozyStylesheet = document.createElement("link");
+          cozyStylesheet.rel = "stylesheet";
+          cozyStylesheet.href = "/assets/cozy-theme.css?v=cozy-20261120";
+          document.head.appendChild(cozyStylesheet);
+          var cozyMotion = document.createElement("script");
+          cozyMotion.defer = true;
+          cozyMotion.src = "/assets/cozy-motion.js?v=cozy-20261120";
+          document.head.appendChild(cozyMotion);
           var staffApp = document.createElement("script");
           staffApp.type = "module";
           staffApp.crossOrigin = "anonymous";
