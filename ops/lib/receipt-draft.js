@@ -1,7 +1,7 @@
 // Một chứng từ, nhiều nhóm chi; tiền mua hàng tồn là dòng tiền, chưa là chi phí
 // tính lãi. Hàm thuần dùng chung cho Nhập kho và tệp đính kèm trong trợ lý AI.
-import { UNITS, PURCHASE_UNITS } from './inventory.js?v=receipts-20261118';
-import { normKey, matchIngredient } from './import-draft.js?v=receipts-20261118';
+import { UNITS, PURCHASE_UNITS } from './inventory.js?v=receipt-edit-20261119';
+import { normKey, matchIngredient } from './import-draft.js?v=receipt-edit-20261119';
 
 export const RECEIPT_CATEGORIES = ['Nguyên liệu', 'Bao bì', 'Vật tư', 'Vệ sinh', 'Điện nước', 'Mặt bằng', 'Lương', 'Marketing', 'Vận hành', 'Khác'];
 export const BUY_UNITS = [...new Set([...UNITS, 'kg', 'l'])];
@@ -124,4 +124,18 @@ export function receiptPayload(draft, ingredients, requestId) {
     p_doc: { supplier: draft.supplier.trim(), doc_no: draft.docNo.trim(), doc_date: draft.docDate,
       has_invoice: !!draft.hasInvoice, file_hash: draft.fileHash, total: sum, payment_source: draft.paymentSource,
       paid_date: draft.paymentSource === 'unpaid' ? null : draft.paidDate || draft.docDate }, p_lines: lines } };
+}
+
+// Dựng bản sửa từ các dòng đã lưu, dùng ID hàng thật thay vì khớp tên lại.
+export function savedReceiptDraft(doc, lines, ingredients = []) {
+  return { supplier: doc.supplier, docNo: doc.doc_no, docDate: doc.doc_date,
+    hasInvoice: doc.has_invoice, fileHash: doc.file_hash, grandTotal: doc.total,
+    paymentSource: doc.payment_source, paidDate: doc.paid_date || doc.doc_date,
+    autoTotal: false, lines: lines.map((l) => ({ ...emptyReceiptLine(),
+      name: l.name, kind: l.kind, category: l.category, total: l.amount,
+      ingredientId: l.ingredient_id || '', newName: '',
+      baseUnit: ingredients.find((i) => (i.ingredient_id || i.id) === l.ingredient_id)?.unit || '',
+      buyQty: l.buy_qty ?? l.qty ?? '', buyUnit: l.buy_unit || ingredients.find((i) => (i.ingredient_id || i.id) === l.ingredient_id)?.unit || 'g',
+      packSize: l.pack_size ?? '',
+    })) };
 }

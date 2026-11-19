@@ -1,7 +1,7 @@
-import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js?v=receipts-20261118';
-import { SupabaseClient } from './lib/supabase-order-source.js?v=receipts-20261118';
-import { monthRange } from './lib/owner-dashboard.js?v=receipts-20261118';
-import { mountReceiptAssistant } from './receipt-assistant.js?v=receipts-20261118';
+import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js?v=receipt-edit-20261119';
+import { SupabaseClient } from './lib/supabase-order-source.js?v=receipt-edit-20261119';
+import { monthRange } from './lib/owner-dashboard.js?v=receipt-edit-20261119';
+import { mountReceiptAssistant } from './receipt-assistant.js?v=receipt-edit-20261119';
 
 const today = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
 const vnd = (v) => `${new Intl.NumberFormat('vi-VN').format(v)}đ`;

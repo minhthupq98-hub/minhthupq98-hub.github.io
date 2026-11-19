@@ -3,7 +3,7 @@
 // mơ hồ ("1 ít", "đầy ly", "2 muỗng"...). Ghi vào kho chỉ qua RPC sau khi người dùng xác nhận.
 // Ticket 7: "muỗng", "vợt" và cách ghi phỏng chừng ("1 lớp", "rắc lên") quy về dụng cụ quầy.
 
-import { measureSize } from './inventory.js?v=receipts-20261118';
+import { measureSize } from './inventory.js?v=receipt-edit-20261119';
 
 // Khóa so khớp: chữ thường, bỏ dấu, đ -> d, chỉ giữ chữ số và khoảng trắng.
 export function normKey(s) {
