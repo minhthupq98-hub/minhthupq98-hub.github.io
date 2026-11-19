@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>THE KHE · Màn chủ quán</title>
-<link rel="stylesheet" href="./style.css?v=receipt-edit-20261119">
+<link rel="stylesheet" href="./style.css?v=ranking-payment-20261119">
 </head>
 <body>
 <a href="#main" class="skip">Bỏ qua menu</a>
@@ -70,7 +70,7 @@
     </div>
     <section class="card"><h2>Việc cần xử lý <span id="issueCount" class="pill"></span></h2><div id="issues"></div></section>
     <div class="grid2">
-      <section class="card"><h2>Món mang lãi nhiều nhất</h2><p class="muted small">Xếp theo tổng lãi gộp. Biên % = lãi gộp / doanh thu món; trước giảm giá cấp đơn và phí sàn.</p><div id="topItems"></div></section>
+      <section class="card"><h2>Xếp hạng món</h2><label class="ranking-control" for="rankingMetric">Xếp theo<select id="rankingMetric"><option value="qty">Số lượng bán</option><option value="revenue">Doanh thu</option><option value="margin" selected>Lãi gộp</option><option value="marginPct">Biên lợi nhuận (%)</option></select></label><p class="muted small">10 món đứng đầu trong kỳ đang chọn. Doanh thu theo giá món lưu trong đơn, trước giảm giá cấp đơn và phí sàn. Món thiếu giá vốn không xếp theo lãi hoặc biên %.</p><p id="rankingStatus" class="muted small" role="status" aria-live="polite"></p><div id="topItems"></div></section>
       <section class="card"><h2>Món mang lãi ít nhất</h2><p class="muted small">Xếp theo tổng lãi, không phải theo biên %. Xem cùng số lượng bán và định lượng trước khi đổi giá.</p><div id="lowItems"></div></section>
     </div>
     <section class="card"><details><summary>Hiệu quả tất cả món: lãi mỗi phần, tỷ lệ giá vốn và biên lãi</summary><p class="muted small">Theo giá món lưu trong đơn. Món thiếu giá vốn chưa có biên %, không coi là lãi 100%.</p><div id="menuMetrics"></div></details></section>
@@ -158,7 +158,7 @@
       <form id="purchaseForm" class="fields">
         <label class="wide">Nguyên liệu <select name="ingredient" required></select></label>
         <label>Số lượng <span class="pair"><input name="qty" inputmode="decimal" placeholder="vd 1,5" required><select name="unit" aria-label="Đơn vị nhập"></select></span></label>
-        <label>Tổng tiền <input name="total" inputmode="numeric" placeholder="vd 180.000" required></label><label>Nhóm chi<select name="category"><option>Nguyên liệu</option><option>Bao bì</option><option>Vật tư</option></select></label><label>Thanh toán<select name="paymentSource" required><option value="">Chọn nguồn tiền</option><option value="outside">Đã chi ngoài két</option><option value="till">Đã chi từ két trong ca</option><option value="unpaid">Chưa thanh toán</option></select></label>
+        <label>Tổng tiền <input name="total" inputmode="numeric" placeholder="vd 180.000" required></label><label>Nhóm chi<select name="category"><option>Nguyên liệu</option><option>Bao bì</option><option>Vật tư</option></select></label><label>Thanh toán<select name="paymentSource" required><option value="">Chọn nguồn tiền</option><option value="outside_cash">Tiền mặt ngoài két</option><option value="transfer">Chuyển khoản</option><option value="till">Tiền mặt từ két ca</option><option value="unpaid">Chưa thanh toán</option></select></label>
         <label>Nhà cung cấp <span class="opt">(tùy chọn)</span><input name="supplier" maxlength="80"></label>
         <div class="act"><button type="submit">Nhập hàng</button></div>
       </form>
@@ -255,6 +255,6 @@
   </section>
   <p id="status" class="muted center" role="status"></p>
 </main>
-<script type="module" src="./app.js?v=receipt-edit-20261119"></script>
+<script type="module" src="./app.js?v=ranking-payment-20261119"></script>
 </body>
 </html>

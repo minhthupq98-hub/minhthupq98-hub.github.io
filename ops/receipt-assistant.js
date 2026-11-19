@@ -1,6 +1,7 @@
-import { UNITS } from './lib/inventory.js?v=receipt-edit-20261119';
-import { parseVndInput } from './lib/shift-store.js?v=receipt-edit-20261119';
-import { BUY_UNITS, RECEIPT_CATEGORIES, emptyReceiptLine, makeReceiptDraft, receiptQuantity, receiptTotals, receiptPayload, savedReceiptDraft } from './lib/receipt-draft.js?v=receipt-edit-20261119';
+import { spendingMethodLabel } from './lib/spending.js?v=ranking-payment-20261119';
+import { UNITS } from './lib/inventory.js?v=ranking-payment-20261119';
+import { parseVndInput } from './lib/shift-store.js?v=ranking-payment-20261119';
+import { BUY_UNITS, RECEIPT_CATEGORIES, emptyReceiptLine, makeReceiptDraft, receiptQuantity, receiptTotals, receiptPayload, savedReceiptDraft } from './lib/receipt-draft.js?v=ranking-payment-20261119';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const vnd = (n) => `${new Intl.NumberFormat('vi-VN').format(n || 0)}đ`;
@@ -33,7 +34,7 @@ export async function invoiceFilePayload(file) {
 export function mountReceiptAssistant(container, { client, getIngredients = null, afterWrite = async () => {}, isCurrentSession = () => true, historyOnly = false }) {
   const id = `receipt-${++instance}`;
   let draft = null, ingredients = [], aliases = [], requestId = null, attempted = null, saving = false, scanning = false, editing = null, deleting = null, historyLimit = 20;
-  const style = new URL('./receipt-assistant.css?v=receipt-edit-20261119', import.meta.url).href;
+  const style = new URL('./receipt-assistant.css?v=ranking-payment-20261119', import.meta.url).href;
   if (!document.querySelector('link[data-receipt-style]')) { const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = style; link.dataset.receiptStyle = ''; document.head.append(link); }
   container.classList.add('receipt-assistant');
   container.innerHTML = `<div class="rc-start"><label class="rc-upload" for="${id}-file">Quét hóa đơn / phiếu mua hàng<input id="${id}-file" class="rc-file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"></label><button type="button" data-action="manual">Nhập tay, không hóa đơn</button></div><p class="rc-status" role="status" aria-live="polite"></p><div class="rc-review"></div><details class="rc-history"${historyOnly ? ' open' : ''}><summary>Hóa đơn đã lưu: xem, sửa hoặc xóa</summary><div class="rc-history-content"></div></details>`;
@@ -43,9 +44,9 @@ export function mountReceiptAssistant(container, { client, getIngredients = null
   async function refreshHistory() {
     const target = container.querySelector('.rc-history-content');
     try {
-      const rows = await client.select('ops_receipt_docs', `select=id,supplier,doc_no,doc_date,total,paid_total,payment_source,legacy_purchase_id&voided_at=is.null&order=created_at.desc,id.asc&limit=${historyLimit}`);
+      const rows = await client.select('ops_receipt_docs', `select=id,supplier,doc_no,doc_date,total,paid_total,payment_source,payment_method,legacy_purchase_id&voided_at=is.null&order=created_at.desc,id.asc&limit=${historyLimit}`);
       if (!isCurrentSession()) return;
-      target.innerHTML = rows.length ? `<ul>${rows.map((r) => `<li><b>${esc(r.supplier || 'Mua hàng')} ${esc(r.doc_no || '')}</b><br>${esc(r.doc_date)} · Tổng ${vnd(r.total)}<br>${r.payment_source === 'unpaid' ? (r.legacy_purchase_id ? 'Đã có kho, chưa ghi tiền chi' : 'Chưa thanh toán') : `Đã chi ${vnd(r.paid_total)}`}<div class="rc-actions"><button type="button" class="rc-secondary" data-action="edit-receipt" data-id="${esc(r.id)}">Sửa</button><button type="button" class="rc-danger" data-action="delete-receipt" data-id="${esc(r.id)}">Xóa</button></div></li>`).join('')}</ul>${rows.length === historyLimit && historyLimit < 1000 ? '<button type="button" class="rc-secondary" data-action="more-history">Xem thêm hóa đơn</button>' : ''}` : '<p class="rc-help">Chưa có hóa đơn đã lưu.</p>';
+      target.innerHTML = rows.length ? `<ul>${rows.map((r) => `<li><b>${esc(r.supplier || 'Mua hàng')} ${esc(r.doc_no || '')}</b><br>${esc(r.doc_date)} · Tổng ${vnd(r.total)}<br>${r.payment_source === 'unpaid' ? (r.legacy_purchase_id ? 'Đã có kho, chưa ghi tiền chi' : 'Chưa thanh toán') : `Đã chi ${vnd(r.paid_total)} · ${esc(spendingMethodLabel(r))}`}<div class="rc-actions"><button type="button" class="rc-secondary" data-action="edit-receipt" data-id="${esc(r.id)}">Sửa</button><button type="button" class="rc-danger" data-action="delete-receipt" data-id="${esc(r.id)}">Xóa</button></div></li>`).join('')}</ul>${rows.length === historyLimit && historyLimit < 1000 ? '<button type="button" class="rc-secondary" data-action="more-history">Xem thêm hóa đơn</button>' : ''}` : '<p class="rc-help">Chưa có hóa đơn đã lưu.</p>';
 
     } catch { target.textContent = 'Chưa đọc được lịch sử chứng từ. Tải lại để thử lại.'; }
   }
@@ -104,6 +105,7 @@ export function mountReceiptAssistant(container, { client, getIngredients = null
       <label>Nhà cung cấp<input data-doc="supplier" value="${esc(draft.supplier)}" maxlength="120"></label><label>Số hóa đơn<input data-doc="docNo" value="${esc(draft.docNo)}" maxlength="60"></label>
       <label>Ngày mua<input data-doc="docDate" type="date" value="${esc(draft.docDate)}" max="${today()}" required></label>
       <label>Thanh toán<select data-doc="paymentSource" required>${opt('', 'Chọn tình trạng / nguồn tiền', draft.paymentSource)}${opt('outside', 'Đã chi ngoài két', draft.paymentSource)}${opt('till', 'Đã chi từ két trong ca', draft.paymentSource)}${opt('unpaid', 'Chưa thanh toán', draft.paymentSource)}</select></label>
+      ${draft.paymentSource === 'outside' ? `<label>Phương thức thanh toán<select data-doc="paymentMethod" required>${opt('', 'Chọn tiền mặt / chuyển khoản', draft.paymentMethod)}${opt('cash', 'Tiền mặt ngoài két', draft.paymentMethod)}${opt('transfer', 'Chuyển khoản', draft.paymentMethod)}</select></label>` : draft.paymentSource === 'till' ? '<p class="rc-help">Tiền mặt từ két ca đang mở, được trừ vào tiền két.</p>' : ''}
       ${draft.paymentSource && draft.paymentSource !== 'unpaid' ? `<label>Ngày chi tiền<input data-doc="paidDate" type="date" value="${esc(draft.paidDate || draft.docDate)}" max="${today()}" required></label>` : ''}
       <label>Tổng hóa đơn (đ)<input data-doc="grandTotal" value="${new Intl.NumberFormat('vi-VN').format(draft.grandTotal)}" inputmode="numeric" required></label></div>
       ${draft.allocatedExtra ? `<p class="rc-help">Đã phân bổ ${vnd(draft.allocatedExtra)} thuế/phí/giảm giá vào các dòng để khớp tổng hóa đơn.</p>` : ''}
@@ -164,7 +166,7 @@ export function mountReceiptAssistant(container, { client, getIngredients = null
   container.addEventListener('change', (e) => {
     const el = e.target;
     if (!draft) return;
-    if (el.dataset.doc === 'paymentSource') { draft.paymentSource = el.value; draft.paidDate ||= draft.docDate; render(); }
+    if (el.dataset.doc === 'paymentSource') { draft.paymentSource = el.value; draft.paymentMethod = el.value === 'till' ? 'cash' : ''; draft.paidDate ||= draft.docDate; render(); }
     if (el.tagName === 'SELECT' && el.dataset.field) {
       const line = draft.lines[Number(el.dataset.line)]; line[el.dataset.field] = el.value;
       if (el.dataset.field === 'category') line.kind = ['Nguyên liệu', 'Bao bì', 'Vật tư'].includes(line.category) ? 'stock' : 'expense';

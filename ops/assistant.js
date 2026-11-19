@@ -1,12 +1,12 @@
 // Trợ lý nhập kho (ticket 6): quét hóa đơn / nhập tay / nhập sổ công thức.
 // Mọi thứ là BẢN NHÁP trong trình duyệt cho tới khi chủ quán bấm Ghi; ghi qua
 // ops_commit_receipt hoặc ops_import_recipes, mỗi lần là một giao dịch.
-import { UNITS, MEASURES, parseQtyInput } from './lib/inventory.js?v=receipt-edit-20261119';
-import { docxToLines } from './lib/docx-text.js?v=receipt-edit-20261119';
-import { mountReceiptAssistant } from './receipt-assistant.js?v=receipt-edit-20261119';
+import { UNITS, MEASURES, parseQtyInput } from './lib/inventory.js?v=ranking-payment-20261119';
+import { docxToLines } from './lib/docx-text.js?v=ranking-payment-20261119';
+import { mountReceiptAssistant } from './receipt-assistant.js?v=ranking-payment-20261119';
 import {
   parseRecipeBook, recipeDraft, refreshFlags, draftIssues, recipeImportPayload, flagText,
-} from './lib/import-draft.js?v=receipt-edit-20261119';
+} from './lib/import-draft.js?v=ranking-payment-20261119';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
