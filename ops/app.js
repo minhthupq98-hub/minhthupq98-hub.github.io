@@ -1,13 +1,14 @@
-import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js?v=receipts-20261118';
-import { SupabaseClient, SupabaseOrderReader, readSupabaseOrders, readExpenses, readSettings } from './lib/supabase-order-source.js?v=receipts-20261118';
-import { buildOwnerDashboard, monthRange, rangeToIso } from './lib/owner-dashboard.js?v=receipts-20261118';
-import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js?v=receipts-20261118';
-import { buildReconcileReport } from './lib/reconcile-report.js?v=receipts-20261118';
-import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js?v=receipts-20261118';
-import { initAssistant, refreshAssistant } from './assistant.js?v=receipts-20261118';
-import { readSpendingEntries, summarizeSpending } from './lib/spending.js?v=receipts-20261118';
-import { mountFinanceAgent } from './finance-agent.js?v=receipts-20261118';
-import { SupabaseInventoryStore, PURCHASE_UNITS, MEASURES, measureSize, MOVE_LABEL, parseQtyInput, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js?v=receipts-20261118';
+import { mountReceiptAssistant } from './receipt-assistant.js?v=receipt-edit-20261119';
+import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js?v=receipt-edit-20261119';
+import { SupabaseClient, SupabaseOrderReader, readSupabaseOrders, readExpenses, readSettings } from './lib/supabase-order-source.js?v=receipt-edit-20261119';
+import { buildOwnerDashboard, monthRange, rangeToIso } from './lib/owner-dashboard.js?v=receipt-edit-20261119';
+import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js?v=receipt-edit-20261119';
+import { buildReconcileReport } from './lib/reconcile-report.js?v=receipt-edit-20261119';
+import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js?v=receipt-edit-20261119';
+import { initAssistant, refreshAssistant } from './assistant.js?v=receipt-edit-20261119';
+import { readSpendingEntries, summarizeSpending } from './lib/spending.js?v=receipt-edit-20261119';
+import { mountFinanceAgent } from './finance-agent.js?v=receipt-edit-20261119';
+import { SupabaseInventoryStore, PURCHASE_UNITS, MEASURES, measureSize, MOVE_LABEL, parseQtyInput, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js?v=receipt-edit-20261119';
 
 const OWN_KEY = 'the-khe-ops-session';
 const $ = (id) => document.getElementById(id);
@@ -47,6 +48,7 @@ function findSession() {
 }
 
 function showLogin(msg = '') {
+  savedReceipts?.clear(); savedReceipts = null;
   $('app').hidden = true;
   $('navToggle').hidden = true;
   $('logout').hidden = true;
@@ -167,7 +169,10 @@ async function load() {
   }
 }
 
+let savedReceipts = null;
 async function loadSpending() {
+  if (!savedReceipts) { const receiptSessionToken = client.accessToken; savedReceipts = mountReceiptAssistant($('savedReceipts'), { client, historyOnly: true, isCurrentSession: () => client.accessToken === receiptSessionToken && !!receiptSessionToken, afterWrite: load }); }
+  else savedReceipts.refreshHistory();
   try {
     const entries = await readSpendingEntries(client, currentRange());
     const summary = summarizeSpending(entries);
