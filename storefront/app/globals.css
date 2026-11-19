@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "./fonts.css";
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 95px; }
+body { margin: 0; background: #fbf9ef; color: #123d28; font-family: "Nunito", ui-rounded, system-ui, sans-serif; }
+button, input, textarea, select { font: inherit; }
+button { color: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
