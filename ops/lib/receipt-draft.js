@@ -1,7 +1,7 @@
 // Một chứng từ, nhiều nhóm chi; tiền mua hàng tồn là dòng tiền, chưa là chi phí
 // tính lãi. Hàm thuần dùng chung cho Nhập kho và tệp đính kèm trong trợ lý AI.
-import { UNITS, PURCHASE_UNITS } from './inventory.js?v=receipt-edit-20261119';
-import { normKey, matchIngredient } from './import-draft.js?v=receipt-edit-20261119';
+import { UNITS, PURCHASE_UNITS } from './inventory.js?v=ranking-payment-20261119';
+import { normKey, matchIngredient } from './import-draft.js?v=ranking-payment-20261119';
 
 export const RECEIPT_CATEGORIES = ['Nguyên liệu', 'Bao bì', 'Vật tư', 'Vệ sinh', 'Điện nước', 'Mặt bằng', 'Lương', 'Marketing', 'Vận hành', 'Khác'];
 export const BUY_UNITS = [...new Set([...UNITS, 'kg', 'l'])];
@@ -74,7 +74,7 @@ export function makeReceiptDraft(invoice, { ingredients = [], aliases = [], toda
   }
   return { supplier: String(invoice?.supplier || '').slice(0, 120), docNo: String(invoice?.doc_no || '').slice(0, 60),
     docDate: validReceiptDate(invoice?.doc_date) ? invoice.doc_date : today, fileHash, hasInvoice, grandTotal: total ?? subtotal,
-    allocatedExtra: extra, paymentSource: '', paidDate: validReceiptDate(invoice?.doc_date) ? invoice.doc_date : today,
+    allocatedExtra: extra, paymentSource: '', paymentMethod: '', paidDate: validReceiptDate(invoice?.doc_date) ? invoice.doc_date : today,
     autoTotal: !hasInvoice || total == null, lines };
 }
 
@@ -96,6 +96,8 @@ export function receiptPayload(draft, ingredients, requestId) {
   if (!validReceiptDate(draft.docDate)) errors.push('Chọn ngày hóa đơn hợp lệ.');
   if (!['outside', 'till', 'unpaid'].includes(draft.paymentSource)) errors.push('Chọn nguồn tiền hoặc Chưa thanh toán.');
   if (draft.paymentSource && draft.paymentSource !== 'unpaid' && !validReceiptDate(draft.paidDate || draft.docDate)) errors.push('Chọn ngày chi tiền hợp lệ.');
+  if (draft.paymentSource === 'outside' && !['cash', 'transfer'].includes(draft.paymentMethod)) errors.push('Chọn Tiền mặt hoặc Chuyển khoản.');
+  if (draft.paymentSource === 'till' && draft.paymentMethod && draft.paymentMethod !== 'cash') errors.push('Chi từ két phải là tiền mặt.');
   const lines = draft.lines.map((line, i) => {
     const label = `Dòng ${i + 1}`;
     if (!line.name.trim()) errors.push(`${label}: nhập tên hàng/khoản chi.`);
@@ -123,6 +125,7 @@ export function receiptPayload(draft, ingredients, requestId) {
   return { errors, payload: errors.length ? null : { p_request_id: requestId,
     p_doc: { supplier: draft.supplier.trim(), doc_no: draft.docNo.trim(), doc_date: draft.docDate,
       has_invoice: !!draft.hasInvoice, file_hash: draft.fileHash, total: sum, payment_source: draft.paymentSource,
+      payment_method: draft.paymentSource === 'unpaid' ? null : draft.paymentSource === 'till' ? 'cash' : draft.paymentMethod,
       paid_date: draft.paymentSource === 'unpaid' ? null : draft.paidDate || draft.docDate }, p_lines: lines } };
 }
 
@@ -130,7 +133,7 @@ export function receiptPayload(draft, ingredients, requestId) {
 export function savedReceiptDraft(doc, lines, ingredients = []) {
   return { supplier: doc.supplier, docNo: doc.doc_no, docDate: doc.doc_date,
     hasInvoice: doc.has_invoice, fileHash: doc.file_hash, grandTotal: doc.total,
-    paymentSource: doc.payment_source, paidDate: doc.paid_date || doc.doc_date,
+    paymentSource: doc.payment_source, paymentMethod: doc.payment_source === 'till' ? 'cash' : doc.payment_method || '', paidDate: doc.paid_date || doc.doc_date,
     autoTotal: false, lines: lines.map((l) => ({ ...emptyReceiptLine(),
       name: l.name, kind: l.kind, category: l.category, total: l.amount,
       ingredientId: l.ingredient_id || '', newName: '',

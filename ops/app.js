@@ -1,14 +1,14 @@
-import { mountReceiptAssistant } from './receipt-assistant.js?v=receipt-edit-20261119';
-import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js?v=receipt-edit-20261119';
-import { SupabaseClient, SupabaseOrderReader, readSupabaseOrders, readExpenses, readSettings } from './lib/supabase-order-source.js?v=receipt-edit-20261119';
-import { buildOwnerDashboard, monthRange, rangeToIso } from './lib/owner-dashboard.js?v=receipt-edit-20261119';
-import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js?v=receipt-edit-20261119';
-import { buildReconcileReport } from './lib/reconcile-report.js?v=receipt-edit-20261119';
-import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js?v=receipt-edit-20261119';
-import { initAssistant, refreshAssistant } from './assistant.js?v=receipt-edit-20261119';
-import { readSpendingEntries, summarizeSpending } from './lib/spending.js?v=receipt-edit-20261119';
-import { mountFinanceAgent } from './finance-agent.js?v=receipt-edit-20261119';
-import { SupabaseInventoryStore, PURCHASE_UNITS, MEASURES, measureSize, MOVE_LABEL, parseQtyInput, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js?v=receipt-edit-20261119';
+import { mountReceiptAssistant } from './receipt-assistant.js?v=ranking-payment-20261119';
+import { SUPABASE_URL, SUPABASE_KEY, ADMIN_SESSION_KEY } from './config.js?v=ranking-payment-20261119';
+import { SupabaseClient, SupabaseOrderReader, readSupabaseOrders, readExpenses, readSettings } from './lib/supabase-order-source.js?v=ranking-payment-20261119';
+import { buildOwnerDashboard, monthRange, rangeToIso, rankMenuItems } from './lib/owner-dashboard.js?v=ranking-payment-20261119';
+import { SupabaseSettlementStore, ordersForReconcile, previewGrabFile } from './lib/settlement-store.js?v=ranking-payment-20261119';
+import { buildReconcileReport } from './lib/reconcile-report.js?v=ranking-payment-20261119';
+import { SupabaseShiftStore, shiftPreview, applyStartDate, parseVndInput, MOVE_KIND } from './lib/shift-store.js?v=ranking-payment-20261119';
+import { initAssistant, refreshAssistant } from './assistant.js?v=ranking-payment-20261119';
+import { readSpendingEntries, summarizeSpending, spendingMethodLabel } from './lib/spending.js?v=ranking-payment-20261119';
+import { mountFinanceAgent } from './finance-agent.js?v=ranking-payment-20261119';
+import { SupabaseInventoryStore, PURCHASE_UNITS, MEASURES, measureSize, MOVE_LABEL, parseQtyInput, recipeAt, recipeCost, menuCostTable, stockStatus, cogsSummary, missingRecipes } from './lib/inventory.js?v=ranking-payment-20261119';
 
 const OWN_KEY = 'the-khe-ops-session';
 const $ = (id) => document.getElementById(id);
@@ -176,11 +176,23 @@ async function loadSpending() {
   try {
     const entries = await readSpendingEntries(client, currentRange());
     const summary = summarizeSpending(entries);
-    $('spendingSummary').innerHTML = `<div class="kpis"><div class="kpi"><div class="l">Tổng tiền đã chi</div><div class="v">${vnd(summary.total)}</div></div><div class="kpi"><div class="l">Mua hàng vào kho</div><div class="v">${vnd(summary.stock)}</div></div><div class="kpi"><div class="l">Chi vận hành đã trả</div><div class="v">${vnd(summary.expense)}</div></div></div>`;
+    $('spendingSummary').innerHTML = `<div class="kpis"><div class="kpi"><div class="l">Tổng tiền đã chi</div><div class="v">${vnd(summary.total)}</div></div><div class="kpi"><div class="l">Mua hàng vào kho</div><div class="v">${vnd(summary.stock)}</div></div><div class="kpi"><div class="l">Chi vận hành đã trả</div><div class="v">${vnd(summary.expense)}</div></div></div><div class="kpis">${[['Tiền mặt đã chi', summary.byMethod.cash], ['Chuyển khoản đã chi', summary.byMethod.transfer], ['Chưa xác định phương thức', summary.byMethod.unknown]].map(([label, amount]) => `<div class="kpi"><div class="l">${label}</div><div class="v">${vnd(amount)}</div></div>`).join('')}</div>`;
     $('spendingGroups').innerHTML = table([['Nhóm chi'], ['Tiền đã chi', 1]], summary.byCategory.map((x) => [esc(x.category), vnd(x.amount)]));
-    $('spendingEntries').innerHTML = table([['Ngày chi'], ['Nội dung'], ['Nhóm'], ['Cách ghi'], ['Số tiền', 1]], entries.slice(0, 200).map((x) => [esc(x.paid_date), esc(x.name), esc(x.category), x.kind === 'stock' ? 'Mua hàng vào kho' : 'Chi vận hành', vnd(x.amount)]));
+    $('spendingEntries').innerHTML = table([['Ngày chi'], ['Nội dung'], ['Nhóm'], ['Cách ghi'], ['Thanh toán'], ['Số tiền', 1]], entries.slice(0, 200).map((x) => [esc(x.paid_date), esc(x.name), esc(x.category), x.kind === 'stock' ? 'Mua hàng vào kho' : 'Chi vận hành', esc(spendingMethodLabel(x)), vnd(x.amount)]));
   } catch (e) { $('spendingSummary').innerHTML = `<p class="err">Chưa đọc được báo cáo tiền chi: ${esc(e.message)}</p>`; }
 }
+
+let rankingItems = [];
+function renderRanking() {
+  const metric = $('rankingMetric').value;
+  const ranked = rankMenuItems(rankingItems, metric);
+  const selectedLabel = $('rankingMetric').selectedOptions[0].textContent;
+  $('rankingStatus').textContent = ranked.length ? `${ranked.length} món · ${selectedLabel} từ cao xuống thấp` : 'Chưa có món đủ dữ liệu để xếp hạng theo tiêu chí này.';
+  $('topItems').innerHTML = ranked.length ? table([['Hạng · Món'], ['SL', 1], ['Doanh thu', 1], ['Lãi gộp', 1], ['Biên %', 1]], ranked.map((i) => [
+    `<b>${i.rank}.</b> ${esc(i.name)}`, i.qty, vnd(i.listRevenue), i.missingCost ? 'Chưa đủ giá vốn' : vnd(i.margin), percent(i.marginPct),
+  ])) : '<p class="muted">Chọn tiêu chí khác hoặc bổ sung giá vốn cho món.</p>';
+}
+$('rankingMetric').addEventListener('change', renderRanking);
 
 function delta(v, label) {
   if (v === null || v === undefined) return `<span class="muted small">chưa có ${label}</span>`;
@@ -275,12 +287,10 @@ function render(d, settings) {
 
   const itemRows = (xs) => xs.map((i) => [esc(i.name), i.qty, vnd(i.listRevenue), vnd(i.margin), i.missingCost ? '<span class="tag">Thiếu giá vốn</span>' : `<span class="${i.marginPct < 0 ? 'down' : ''}">${percent(i.marginPct)}</span>`]);
   const head = [['Món'], ['SL', 1], ['Doanh thu', 1], ['Lãi gộp', 1], ['Biên %', 1]];
-  // Chia đôi danh sách đã xếp theo lãi: nửa trên là bán chạy, phần còn lại (đảo ngược) là lãi thấp.
-  const nTop = Math.min(5, Math.ceil(d.items.length / 2));
-  $('topItems').innerHTML = table(head, itemRows(d.items.slice(0, nTop)));
-  $('lowItems').innerHTML = d.items.length > nTop
-    ? table(head, itemRows(d.items.slice(nTop).reverse().slice(0, 5)))
-    : '<p class="muted">Chưa đủ món để so sánh.</p>';
+  rankingItems = d.items;
+  renderRanking();
+  const low = d.items.filter((i) => !i.missingCost).sort((a, b) => a.margin - b.margin).slice(0, 5);
+  $('lowItems').innerHTML = low.length ? table(head, itemRows(low)) : '<p class="muted">Chưa có món đủ giá vốn để so sánh.</p>';
   $('menuMetrics').innerHTML = table([['Món'], ['SL', 1], ['Lãi / phần', 1], ['Giá vốn %', 1], ['Biên lãi %', 1]],
     d.items.map((i) => [esc(i.name), i.qty, vnd(i.profitPerItem), percent(i.costPct), percent(i.marginPct)]));
 

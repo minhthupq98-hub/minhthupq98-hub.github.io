@@ -134,8 +134,10 @@ export class SupabaseInventoryStore {
 
   purchase({ ingredientId, qty, total, supplier = '', unit, category = 'Nguyên liệu', paymentSource, requestId, name = 'Nhập hàng' }) {
     const date = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+    const method = paymentSource === 'transfer' ? 'transfer' : ['till', 'outside_cash'].includes(paymentSource) ? 'cash' : null;
+    const source = ['transfer', 'outside_cash'].includes(paymentSource) ? 'outside' : paymentSource;
     return this.client.rpc('ops_commit_receipt', { p_request_id: requestId,
-      p_doc: { supplier, doc_no: '', doc_date: date, has_invoice: false, file_hash: null, total, payment_source: paymentSource, paid_date: paymentSource === 'unpaid' ? null : date },
+      p_doc: { supplier, doc_no: '', doc_date: date, has_invoice: false, file_hash: null, total, payment_source: source, payment_method: method, paid_date: source === 'unpaid' ? null : date },
       p_lines: [{ name, kind: 'stock', category, ingredient_id: ingredientId, new_name: null, new_unit: unit, qty, buy_qty: qty, buy_unit: unit, pack_size: null, total }] });
   }
 

@@ -188,3 +188,11 @@ export function buildOwnerDashboard({ orders, expenses = [], range, now, syncedA
     complete: sourceStatus === 'ok' && exp.length > 0,
   };
 }
+
+// Xếp hạng theo kỳ đã lọc. Không xếp lãi ảo của món thiếu giá vốn lên đầu.
+export function rankMenuItems(items, metric = 'margin', limit = 10) {
+  const key = { qty: 'qty', revenue: 'listRevenue', margin: 'margin', marginPct: 'marginPct' }[metric] || 'margin';
+  const eligible = items.filter((i) => !['margin', 'marginPct'].includes(key) || !i.missingCost && Number.isFinite(i[key]));
+  return [...eligible].sort((a, b) => b[key] - a[key] || b.listRevenue - a.listRevenue || a.name.localeCompare(b.name, 'vi'))
+    .slice(0, limit).map((i, index) => ({ ...i, rank: index + 1 }));
+}

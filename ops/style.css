@@ -226,3 +226,5 @@ button.add{margin-top:2px}
 .fields .pair select{width:auto;flex:0 0 78px;margin:0}
 .fields .pair input{width:auto}
 .fields>label.check{white-space:nowrap}
+
+.ranking-control{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.ranking-control select{max-width:100%;flex:1;min-width:0}select:focus-visible{outline:3px solid #d9a066;outline-offset:2px}
